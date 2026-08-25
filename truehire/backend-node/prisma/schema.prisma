@@ -1,0 +1,184 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  schemas   = ["public", "auth"]
+}
+
+enum UserRole {
+  candidate
+  recruiter
+
+  @@schema("public")
+}
+
+enum OtpPurpose {
+  verify_email
+  reset_password
+
+  @@schema("public")
+}
+
+enum ApplicationStage {
+  applied
+  viewed
+  interview
+  offer
+  rejected
+
+  @@schema("public")
+}
+
+enum RequisitionStatus {
+  open
+  paused
+  closed
+
+  @@schema("public")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  passwordHash  String   @map("password_hash")
+  role          UserRole
+  emailVerified Boolean  @default(false) @map("email_verified")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  refreshTokens RefreshToken[]
+  otpCodes      OtpCode[]
+  candidate     Candidate?
+  requisitions  Requisition[]
+
+  @@map("users")
+  @@schema("public")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  tokenHash String   @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+  @@schema("public")
+}
+
+model OtpCode {
+  id        String     @id @default(uuid())
+  userId    String     @map("user_id")
+  codeHash  String     @map("code_hash")
+  purpose   OtpPurpose
+  expiresAt DateTime   @map("expires_at")
+  consumed  Boolean    @default(false)
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+  @@map("otp_codes")
+  @@schema("public")
+}
+
+model Candidate {
+  id            String  @id @default(uuid())
+  userId        String  @unique @map("user_id")
+  resumeUrl     String? @map("resume_url")
+  parsedProfile Json?   @map("parsed_profile")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applications Application[]
+
+  @@map("candidates")
+  @@schema("public")
+}
+
+model Requisition {
+  id          String             @id @default(uuid())
+  recruiterId String             @map("recruiter_id")
+  title       String
+  company     String
+  salaryRange String?            @map("salary_range")
+  status      RequisitionStatus  @default(open)
+  openedAt    DateTime           @default(now()) @map("opened_at")
+
+  recruiter    User                 @relation(fields: [recruiterId], references: [id], onDelete: Cascade)
+  events       RequisitionEvent[]
+  ghostScores  GhostScore[]
+  applications Application[]
+
+  @@index([recruiterId])
+  @@map("requisitions")
+  @@schema("public")
+}
+
+enum RequisitionEventType {
+  interview
+  offer
+  activity
+
+  @@schema("public")
+}
+
+model RequisitionEvent {
+  id            String                @id @default(uuid())
+  requisitionId String                @map("requisition_id")
+  type          RequisitionEventType
+  occurredAt    DateTime              @default(now()) @map("occurred_at")
+
+  requisition Requisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+
+  @@index([requisitionId])
+  @@map("requisition_events")
+  @@schema("public")
+}
+
+enum RiskLevel {
+  low
+  medium
+  high
+
+  @@schema("public")
+}
+
+model GhostScore {
+  id            String    @id @default(uuid())
+  requisitionId String    @map("requisition_id")
+  score         Int
+  riskLevel     RiskLevel @map("risk_level")
+  computedAt    DateTime  @default(now()) @map("computed_at")
+  inputs        Json
+
+  requisition Requisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+
+  @@index([requisitionId])
+  @@map("ghost_scores")
+  @@schema("public")
+}
+
+model Application {
+  id            String            @id @default(uuid())
+  candidateId   String            @map("candidate_id")
+  requisitionId String            @map("requisition_id")
+  stage         ApplicationStage  @default(applied)
+  matchScore    Int?              @map("match_score")
+  appliedAt     DateTime          @default(now()) @map("applied_at")
+
+  candidate   Candidate   @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  requisition Requisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId])
+  @@index([requisitionId])
+  @@map("applications")
+  @@schema("public")
+}

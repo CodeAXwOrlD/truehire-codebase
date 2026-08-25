@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background-color: #0a0a0b;
+  color: #f2f2f3;
+}
+
+/* Visible focus ring everywhere — non-negotiable per Design.md §6 */
+:focus-visible {
+  outline: 2px solid #f2f2f3;
+  outline-offset: 2px;
+}
+
+/* Custom cursor replaces the native one, but only on fine-pointer (mouse) devices */
+@media (pointer: fine) {
+  * {
+    cursor: none !important;
+  }
+}

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TrueHire — Animated Mark</title>
+<style>
+  :root{ --bg0:#0A0A0F; }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; min-height:100vh; background:var(--bg0);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-family:'Inter',sans-serif; color:#EDEDF2; gap:22px;
+  }
+  .stage{ width:280px; height:280px; display:flex; align-items:center; justify-content:center; position:relative; }
+  svg{
+    overflow:visible;
+    display:block;
+    opacity:1;
+    transform:translateY(0) scale(1);
+    transition:opacity .2s ease, transform 1.15s cubic-bezier(.16,1.25,.3,1);
+    will-change:transform, opacity;
+  }
+
+  /* Zoom out from above, then pop down into the final centered position. */
+  body.pre .stage svg{
+    opacity:0;
+    transform:translateY(-120px) scale(1.85);
+  }
+
+  .bar1, .bar2, .bar3, .stem{
+    transform-box: fill-box;
+    transform-origin: center;
+    /* DEFAULT STATE = fully visible. Nothing depends on an animation completing. */
+    opacity: 1;
+    transform: scale(1);
+    transition: opacity .5s cubic-bezier(.2,.9,.25,1.2), transform .5s cubic-bezier(.2,.9,.25,1.2);
+  }
+  .stem{ transition-duration: .5s; }
+
+  /* Entrance hidden state — only applied briefly via JS-added class before first paint settles */
+  body.pre .bar1{ opacity:0; transform:scale(0.6); transition-delay: 0s; }
+  body.pre .bar2{ opacity:0; transform:scale(0.6); transition-delay: .13s; }
+  body.pre .bar3{ opacity:0; transform:scale(0.6); transition-delay: .25s; }
+  body.pre .stem{ opacity:0; transform:scaleY(0.15); transition-delay: .37s; }
+
+  .mark{ transform-box: fill-box; transform-origin: center; }
+  body.settled .mark{ animation: float 3.8s ease-in-out infinite; }
+  @keyframes float{
+    0%,100%{ transform: translate3d(0,0,0) rotate(0deg) scale(1); }
+    25%{ transform: translate3d(6px,-10px,0) rotate(.8deg) scale(1.012); }
+    50%{ transform: translate3d(0,-17px,0) rotate(0deg) scale(1.025); }
+    75%{ transform: translate3d(-6px,-10px,0) rotate(-.8deg) scale(1.012); }
+  }
+
+  /* Independent horizontal-line motion keeps the symbol feeling alive. */
+  body.settled .bar1{ animation: lineWaveOne 2.8s ease-in-out infinite; }
+  body.settled .bar2{ animation: lineWaveTwo 2.8s ease-in-out .18s infinite; }
+  body.settled .bar3{ animation: lineWaveThree 2.8s ease-in-out .36s infinite; }
+  @keyframes lineWaveOne{
+    0%,100%{ transform:translate(0,0) scale(1); }
+    50%{ transform:translate(-7px,-4px) scaleX(1.035); }
+  }
+  @keyframes lineWaveTwo{
+    0%,100%{ transform:translate(0,0) scale(1); }
+    50%{ transform:translate(8px,1px) scaleX(.96); }
+  }
+  @keyframes lineWaveThree{
+    0%,100%{ transform:translate(0,0) scale(1); }
+    50%{ transform:translate(-6px,4px) scaleX(1.06); }
+  }
+
+  .stage:hover .mark{ filter:drop-shadow(0 0 12px rgba(124,111,240,.28)); }
+
+  .stage:hover .bar1{ transform: translate(-4px,-2px) scale(1); }
+  .stage:hover .bar2{ transform: translate(4px,0px) scale(1); }
+  .stage:hover .bar3{ transform: translate(-3px,2px) scale(1); }
+  .stage:hover .stem{ filter: drop-shadow(0 0 8px rgba(92,211,242,0.35)); }
+
+  .glow-pulse{
+    stroke: url(#g2); stroke-width: 46; stroke-linecap: round; fill:none; opacity: 0;
+  }
+  .stage:hover .glow-pulse{
+    opacity: 1; animation: pulseDown 1.4s ease-in-out infinite;
+  }
+  @keyframes pulseDown{
+    0%{ stroke-dashoffset: 380; opacity:0; }
+    15%{ opacity: 0.45; } 85%{ opacity: 0.45; }
+    100%{ stroke-dashoffset: 0; opacity:0; }
+  }
+
+  .word{ font-family:'Space Grotesk','Inter',sans-serif; font-weight:700; font-size:26px; letter-spacing:5px; opacity:1; transition: opacity .5s, transform .5s; }
+  body.pre .word{ opacity:0; transform:translateY(8px); }
+  .tag{ font-size:12px; letter-spacing:2px; color:#8A8A96; text-transform:uppercase; opacity:1; transition: opacity .5s, transform .5s; transition-delay:.1s; }
+  body.pre .tag{ opacity:0; transform:translateY(8px); }
+  .hint{ font-size:12px; color:#5C5C6E; }
+  .replay{ padding:8px 16px; border-radius:8px; font-size:12.5px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#B9B9C6; cursor:pointer; font-family:'Inter',sans-serif; }
+  .replay:hover{ background:rgba(255,255,255,0.09); }
+</style>
+</head>
+<body class="pre">
+
+  <div class="stage" id="stage">
+    <svg width="280" height="280" viewBox="280 280 464 464">
+      <defs>
+        <linearGradient id="g" gradientUnits="userSpaceOnUse" x1="330" y1="330" x2="694" y2="694">
+          <stop offset="0%" stop-color="#7C6FF0"/>
+          <stop offset="100%" stop-color="#5CD3F2"/>
+        </linearGradient>
+        <linearGradient id="g2" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#5CD3F2" stop-opacity="0"/>
+          <stop offset="50%" stop-color="#5CD3F2" stop-opacity="1"/>
+          <stop offset="100%" stop-color="#5CD3F2" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+
+      <g class="mark">
+        <path class="glow-pulse" d="M 512 330 L 512 694" stroke-dasharray="380" stroke-dashoffset="380"/>
+        <g fill="none" stroke="#5CD3F2" stroke-linecap="round" stroke-linejoin="round">
+          <path class="bar1" d="M 330 330 L 694 330" stroke="url(#g)" stroke-width="46"/>
+          <path class="bar2" d="M 370 414 L 638 414" stroke="url(#g)" stroke-width="30" stroke-opacity="0.85"/>
+          <path class="bar3" d="M 410 498 L 582 498" stroke="url(#g)" stroke-width="18" stroke-opacity="0.7"/>
+          <path class="stem" d="M 512 330 L 512 694" stroke="url(#g)" stroke-width="46"/>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <div style="text-align:center;">
+    <div class="word">TRUE<span style="background:linear-gradient(90deg,#7C6FF0,#5CD3F2);-webkit-background-clip:text;background-clip:text;color:transparent;">HIRE</span></div>
+    <div class="tag" style="margin-top:6px;">real jobs, resolved</div>
+  </div>
+
+  <button class="replay" id="replay">↻ Replay intro</button>
+  <p class="hint">Hover the mark for the connection pulse.</p>
+
+<script>
+  function playIntro(){
+    document.body.classList.add('pre');
+    document.body.classList.remove('settled');
+    // next frame, remove 'pre' so the transitions animate from hidden -> default visible state
+    requestAnimationFrame(()=> requestAnimationFrame(()=>{
+      document.body.classList.remove('pre');
+      setTimeout(()=> document.body.classList.add('settled'), 550);
+    }));
+  }
+  playIntro();
+  document.getElementById('replay').addEventListener('click', playIntro);
+</script>
+</body>
+</html>
