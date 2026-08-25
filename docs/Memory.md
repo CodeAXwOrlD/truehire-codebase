@@ -7,18 +7,18 @@ Purpose: read by the AI coding tool at the start of every session so it does not
 ---
 
 ## Current phase
-Phase 2 & Phase 3 COMPLETE.
-- Phase 2: Recruiter Dashboard Shell (Topbar, Sidebar, Command Palette Cmd+K, Navigation, Responsive Layout) is fully built and verified.
-- Phase 3: Requisitions Module (Full CRUD backend API routes, Zod validation, events logger, Requisition table UI with hairline rows and spotlight hover, Create Requisition Modal, Requisition Detail & Pipeline Kanban view, and Analytics overview) is fully implemented and compiled.
-- Next Phase: Phase 4 (Ghost-Score Engine in Python FastAPI service) & Phase 5 (Candidate Job Board & Real-Time Live Job Feed).
+Phase 4 & Phase 5 COMPLETE.
+- Phase 4: Ghost-Score Engine in FastAPI Python microservice with HMAC-SHA256 signature inter-service security, explainability calculations, and Node API proxy client.
+- Phase 5: Candidate Live Job Board with Multi-Source Aggregation (RemoteOK, Arbeitnow, YC, LinkedIn), Server-Sent Events (SSE) real-time streaming, multi-dimensional filters (Remote only, Ghost risk slider, platform source tabs, tech stack tags), Verified Beacon risk pills, "Why this score?" explainability modal, and candidate application tracker.
+- Next Phase: Phase 6 (AI Match-Score Engine & Resume Parsing via Python NLP) & Phase 7 (Interactive Analytics Cohorts).
 
 ## Decisions log
 *(most recent first)*
 
-- **Requisitions & Pipeline architecture implemented (v2):** Built full CRUD on backend-node with Prisma + Zod validation. Requisitions support event logging (interview, offer, activity) to feed ghost-score heuristics in Phase 4.
-- **Frontend Requisitions UI locked:** Hairline borders, Zinc surfaces (#0A0A0B), Teal accents, status pills (open, paused, closed), and Ghost-Risk indicators. Detail view includes candidate pipeline stages (Applied -> Reviewed -> Interview -> Offer -> Rejected).
-- **Backend architecture changed (v2):** moved off Supabase Edge Functions entirely. Supabase is now DB (Postgres) + Storage only. Business logic split into two owned services: backend-node (Express + TypeScript + Prisma) and scoring-service-python (FastAPI).
-- **Auth changed (v2):** self-built system — bcrypt password hashing, JWT access token (15 min) + rotated hashed refresh token (7 day, httpOnly cookie), email OTP verification required before login, rate limiting on all auth routes.
+- **Live Multi-Source Job Aggregator Engine implemented (v2):** Aggregates live jobs from public APIs (RemoteOK, Arbeitnow, YC/HN), normalizes them into unified schema, automatically scores every job via internal Python scoring service, and broadcasts real-time updates to connected candidate clients via SSE.
+- **Inter-service security locked (v2):** Node.js signs requests to Python scoring service using HMAC-SHA256 over timestamp + body with SERVICE_SHARED_SECRET. Python service validates signature and timestamp window to reject unauthorized or replay requests.
+- **Candidate UI locked (v1):** Live Job Board (/jobs) with real-time stream status, instant multi-filters, Ghost-Score risk pills (Low <30, Medium 30-65, High >65), Explainability Modal, and Application Tracker (/applications).
+- **Requisitions & Pipeline architecture implemented (v2):** Full CRUD on backend-node with Prisma + Zod validation. Requisitions support event logging (interview, offer, activity) to feed ghost-score heuristics.
 - **Design system finalized (v1, unchanged):** flat zinc/black base (#0A0A0B), hairline borders, teal #2FBFA8 / amber #D69A45 / red #D9564D status colors only, Inter + JetBrains Mono.
 
 ## Session log
@@ -27,8 +27,8 @@ Phase 2 & Phase 3 COMPLETE.
 - **Session 0 (planning):** Wrote PRD.md, Architecture.md v1, Rules.md v1, Phases.md v1, Design.md. Finalized visual design system and logo direction.
 - **Session 1 (architecture revision + scaffold):** Monorepo scaffolding across 3 services.
 - **Session 2 (Phase 1 frontend auth):** Built sign-up, verify (OTP), and sign-in pages in frontend/app/(auth)/.
-- **Session 3 (Phase 2 & Phase 3 Requisitions):** Implemented full backend CRUD & event logging in backend-node/src/routes/requisitions.routes.ts. Built Requisitions Table with status filters & search, CreateRequisitionModal, Requisition Detail view with candidate pipeline and activity timeline, updated Dashboard Home with dynamic metrics, and created hiring velocity analytics overview. Both frontend and backend compile and build with 0 errors. Next: Phase 4 & Phase 5 (Ghost-Score Engine & Candidate Live Job Board).
+- **Session 3 (Phase 2 & Phase 3 Requisitions):** Built Requisitions CRUD, detail pipeline Kanban, and recruiter dashboard home.
+- **Session 4 (Phase 4 & Phase 5 Live Job Board + Ghost-Score Engine):** Built Python Ghost-Score calculation & explainability engine, Node HMAC-SHA256 service client, Multi-source live job aggregator & SSE streamer, Candidate Live Job Board (/jobs) with multi-filters and detail drawer, "Why this score?" explainability modal, and candidate application tracker (/applications). All 12 Next.js routes, Node API, and FastAPI Python microservice pass with 0 errors.
 
 ## Known open questions
-- Realtime job scraping & ingestion pipeline (RemoteOK, Arbeitnow, YC, LinkedIn) for Phase 5 candidate job board.
-- Heuristic weighting for ghost-score in Python scoring service (Phase 4).
+- AI resume parsing (PDF/DOCX) and semantic embedding comparisons for Phase 6 match-score engine.

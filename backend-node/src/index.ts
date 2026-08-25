@@ -8,6 +8,8 @@ import { errorHandler } from "./middleware/errorHandler";
 import { authRouter } from "./routes/auth.routes";
 import { requisitionsRouter } from "./routes/requisitions.routes";
 import { scoringRouter } from "./routes/scoring.routes";
+import { jobsRouter } from "./routes/jobs.routes";
+import { jobAggregator } from "./lib/jobAggregator";
 import { prisma } from "./lib/prisma";
 
 const app = express();
@@ -38,9 +40,13 @@ app.get("/health", async (_req, res) => {
 app.use("/api/auth", authRateLimiter, authRouter);
 app.use("/api/requisitions", requisitionsRouter);
 app.use("/api/scoring", scoringRouter);
+app.use("/api/jobs", jobsRouter);
 
 // ---- Error handler (must be last) ----
 app.use(errorHandler);
+
+// Start live job aggregation
+jobAggregator.startLiveIngestion().catch(console.error);
 
 app.listen(env.port, () => {
   console.log(`[backend-node] listening on http://localhost:${env.port} (${env.nodeEnv})`);
