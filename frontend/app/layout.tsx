@@ -4,8 +4,19 @@ import "./globals.css";
 import { BackgroundGrid } from "@/components/ui/BackgroundGrid";
 import { CustomCursor } from "@/components/ui/CustomCursor";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains-mono" });
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+  fallback: ["system-ui", "-apple-system", "sans-serif"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
+  display: "swap",
+  fallback: ["SFMono-Regular", "Consolas", "monospace"],
+});
 
 export const metadata: Metadata = {
   title: "TrueHire — Real jobs, resolved",

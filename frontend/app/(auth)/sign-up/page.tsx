@@ -44,11 +44,11 @@ export default function SignUpPage() {
 
       <form
         onSubmit={handleSubmit}
-        className="flex w-full max-w-sm flex-col gap-5 rounded-card border border-border bg-glass p-8"
+        className="flex w-full max-w-sm flex-col gap-5 rounded-card border border-border bg-glass p-8 shadow-2xl backdrop-blur-md"
       >
         <div>
-          <h1 className="text-lg font-semibold text-ink">Create your account</h1>
-          <p className="mt-1 text-sm text-ink-dim">Real jobs, resolved.</p>
+          <h1 className="text-xl font-bold tracking-tight text-ink">Create your account</h1>
+          <p className="mt-1 text-xs text-ink-dim">Real jobs, resolved.</p>
         </div>
 
         <Input
@@ -56,16 +56,18 @@ export default function SignUpPage() {
           type="email"
           autoComplete="email"
           required
+          placeholder="name@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
-        
+
         <div>
           <Input
             label="Password"
             type="password"
             autoComplete="new-password"
             required
+            placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
@@ -74,32 +76,32 @@ export default function SignUpPage() {
           {password.length > 0 && (
             <div className="mt-2.5 flex flex-col gap-1.5 rounded-control border border-border bg-surface p-2.5 text-xs">
               <div className={`flex items-center gap-1.5 ${hasMinLength ? "text-teal" : "text-ink-faint"}`}>
-                {hasMinLength ? <Check size={14} /> : <X size={14} />}
+                {hasMinLength ? <Check size={13} /> : <X size={13} />}
                 <span>At least 8 characters</span>
               </div>
               <div className={`flex items-center gap-1.5 ${hasNumber ? "text-teal" : "text-ink-faint"}`}>
-                {hasNumber ? <Check size={14} /> : <X size={14} />}
+                {hasNumber ? <Check size={13} /> : <X size={13} />}
                 <span>At least 1 number</span>
               </div>
               <div className={`flex items-center gap-1.5 ${hasSpecial ? "text-teal" : "text-ink-faint"}`}>
-                {hasSpecial ? <Check size={14} /> : <X size={14} />}
+                {hasSpecial ? <Check size={13} /> : <X size={13} />}
                 <span>At least 1 special character (!@#$%^&*)</span>
               </div>
             </div>
           )}
         </div>
 
-        <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1 text-sm font-medium text-ink-dim">I am a</legend>
+        <fieldset className="flex flex-col gap-1.5">
+          <legend className="text-xs font-medium text-ink-dim">I am joining as a</legend>
           <div className="flex gap-2">
             {(["candidate", "recruiter"] as const).map((r) => (
               <button
                 key={r}
                 type="button"
                 onClick={() => setRole(r)}
-                className={`flex-1 rounded-control border px-3 py-2 text-sm capitalize transition-colors ${
+                className={`flex-1 rounded-control border px-3 py-2 text-xs font-medium capitalize transition-all ${
                   role === r
-                    ? "border-teal bg-teal/10 text-teal"
+                    ? "border-teal bg-teal/10 text-teal shadow-sm"
                     : "border-border text-ink-dim hover:border-border-strong"
                 }`}
               >
@@ -109,15 +111,15 @@ export default function SignUpPage() {
           </div>
         </fieldset>
 
-        {error && <p className="text-sm text-red">{error}</p>}
+        {error && <p className="text-xs font-medium text-red">{error}</p>}
 
-        <Button type="submit" isLoading={loading} disabled={!isValid}>
+        <Button type="submit" isLoading={loading} disabled={!isValid} className="w-full">
           Create account
         </Button>
 
-        <p className="text-center text-sm text-ink-faint">
+        <p className="border-t border-border/60 pt-4 text-center text-xs text-ink-faint">
           Already have an account?{" "}
-          <Link href="/sign-in" className="text-ink underline underline-offset-2">
+          <Link href="/sign-in" className="text-ink underline underline-offset-2 hover:text-teal">
             Sign in
           </Link>
         </p>

@@ -35,6 +35,10 @@ export const env = {
   smtpPass: process.env.SMTP_PASS ?? "",
   mailFrom: process.env.MAIL_FROM ?? "TrueHire <no-reply@example.com>",
 
+  whatsappToken: process.env.WHATSAPP_TOKEN ?? "",
+  whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID ?? "",
+  whatsappTemplateName: process.env.WHATSAPP_TEMPLATE_NAME ?? "",
+
   serviceSharedSecret: required("SERVICE_SHARED_SECRET"),
   scoringServiceUrl: process.env.SCORING_SERVICE_URL ?? "http://localhost:8000",
 };

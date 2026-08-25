@@ -7,18 +7,18 @@ Purpose: read by the AI coding tool at the start of every session so it does not
 ---
 
 ## Current phase
-Phase 4 & Phase 5 COMPLETE.
-- Phase 4: Ghost-Score Engine in FastAPI Python microservice with HMAC-SHA256 signature inter-service security, explainability calculations, and Node API proxy client.
-- Phase 5: Candidate Live Job Board with Multi-Source Aggregation (RemoteOK, Arbeitnow, YC, LinkedIn), Server-Sent Events (SSE) real-time streaming, multi-dimensional filters (Remote only, Ghost risk slider, platform source tabs, tech stack tags), Verified Beacon risk pills, "Why this score?" explainability modal, and candidate application tracker.
-- Next Phase: Phase 6 (AI Match-Score Engine & Resume Parsing via Python NLP) & Phase 7 (Interactive Analytics Cohorts).
+Phase 6 COMPLETE.
+- Phase 6: AI Match-Score Engine & Resume Parsing via Python FastAPI microservice, Candidate Profile & Tech Stack Manager, Dynamic Match % Badges on live job board, Match Breakdown Explainability Modal (Matched skills, Missing skills, Tailoring tips), and Candidate Application Pipeline.
+- Next Phase: Phase 7 (Interactive Analytics Cohorts & Funnel Visualizations) & Phase 8 (Production Deployment Hardening).
 
 ## Decisions log
 *(most recent first)*
 
+- **Meta WhatsApp Cloud API Free OTP & Modern Box Auth UI implemented (v2):** Added 100% free WhatsApp OTP verification (~1,000 free conversations/month on Meta Graph API). Built 6-box auto-focus OTP component with paste support, dual sign-in tabs (WhatsApp 1-Click vs Password), and holographic Verified Beacon login/unlock success animation.
+- **AI Match-Score Architecture implemented (v2):** Python FastAPI microservice extracts skills via NLP regex dictionary matching from raw resume/bio text. Calculates compatibility score (0-100%) against job titles, tags, and job descriptions with breakdown of matched vs missing competencies.
+- **Candidate Skill Profile & Match UI locked (v1):** Live Job Board (/jobs) displays glowing Teal Match Badge (e.g. 90% Match) on every listing. Candidate can open "My Skills" modal to customize tech stack and trigger live match recomputation. Match Breakdown Modal displays matched skills, missing skills, and interview tailoring tips.
 - **Live Multi-Source Job Aggregator Engine implemented (v2):** Aggregates live jobs from public APIs (RemoteOK, Arbeitnow, YC/HN), normalizes them into unified schema, automatically scores every job via internal Python scoring service, and broadcasts real-time updates to connected candidate clients via SSE.
 - **Inter-service security locked (v2):** Node.js signs requests to Python scoring service using HMAC-SHA256 over timestamp + body with SERVICE_SHARED_SECRET. Python service validates signature and timestamp window to reject unauthorized or replay requests.
-- **Candidate UI locked (v1):** Live Job Board (/jobs) with real-time stream status, instant multi-filters, Ghost-Score risk pills (Low <30, Medium 30-65, High >65), Explainability Modal, and Application Tracker (/applications).
-- **Requisitions & Pipeline architecture implemented (v2):** Full CRUD on backend-node with Prisma + Zod validation. Requisitions support event logging (interview, offer, activity) to feed ghost-score heuristics.
 - **Design system finalized (v1, unchanged):** flat zinc/black base (#0A0A0B), hairline borders, teal #2FBFA8 / amber #D69A45 / red #D9564D status colors only, Inter + JetBrains Mono.
 
 ## Session log
@@ -28,7 +28,9 @@ Phase 4 & Phase 5 COMPLETE.
 - **Session 1 (architecture revision + scaffold):** Monorepo scaffolding across 3 services.
 - **Session 2 (Phase 1 frontend auth):** Built sign-up, verify (OTP), and sign-in pages in frontend/app/(auth)/.
 - **Session 3 (Phase 2 & Phase 3 Requisitions):** Built Requisitions CRUD, detail pipeline Kanban, and recruiter dashboard home.
-- **Session 4 (Phase 4 & Phase 5 Live Job Board + Ghost-Score Engine):** Built Python Ghost-Score calculation & explainability engine, Node HMAC-SHA256 service client, Multi-source live job aggregator & SSE streamer, Candidate Live Job Board (/jobs) with multi-filters and detail drawer, "Why this score?" explainability modal, and candidate application tracker (/applications). All 12 Next.js routes, Node API, and FastAPI Python microservice pass with 0 errors.
+- **Session 4 (Phase 4 & Phase 5 Live Job Board + Ghost-Score Engine):** Built Python Ghost-Score calculation & explainability engine, Node HMAC-SHA256 service client, Multi-source live job aggregator & SSE streamer, Candidate Live Job Board (/jobs) with multi-filters and detail drawer.
+- **Session 5 (Phase 6 AI Match-Score Engine & Resume Parsing):** Implemented Python NLP resume parser & match score heuristic router, Node candidate routes, Candidate Skills & Profile Modal, dynamic Match % badges across live jobs, and Match Breakdown modal. All services verified with 0 errors.
+- **Session 6 (WhatsApp Cloud API & Fancy Box OTP UI):** Implemented WhatsApp Cloud API integration in Node API, 6-slot Box OTP Input component with auto-focus & clipboard paste, and holographic biometric Verified Beacon unlock animation. Verified with 0 build errors.
 
 ## Known open questions
-- AI resume parsing (PDF/DOCX) and semantic embedding comparisons for Phase 6 match-score engine.
+- PDF/DOCX binary file upload direct extraction via PyPDF2 / pdfplumber.

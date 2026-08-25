@@ -1,17 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { ShieldCheck, AlertTriangle, AlertOctagon, MapPin, DollarSign, ExternalLink, HelpCircle, Check, Loader2 } from "lucide-react";
+import { ShieldCheck, AlertTriangle, AlertOctagon, MapPin, DollarSign, ExternalLink, HelpCircle, Check, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { UnifiedJob, applyToJob } from "@/lib/api/jobs";
 
 interface JobCardProps {
   job: UnifiedJob;
+  matchScore?: number;
   onExplainGhostScore: (job: UnifiedJob) => void;
+  onExplainMatchScore?: (job: UnifiedJob) => void;
   onSelectJob: (job: UnifiedJob) => void;
 }
 
-export function JobCard({ job, onExplainGhostScore, onSelectJob }: JobCardProps) {
+export function JobCard({ job, matchScore, onExplainGhostScore, onExplainMatchScore, onSelectJob }: JobCardProps) {
   const [applied, setApplied] = useState(false);
   const [applying, setApplying] = useState(false);
 
@@ -78,19 +80,36 @@ export function JobCard({ job, onExplainGhostScore, onSelectJob }: JobCardProps)
             </div>
           </div>
 
-          {/* Ghost Risk Badge */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onExplainGhostScore(job);
-            }}
-            className={`flex items-center gap-1.5 rounded-control border px-2.5 py-1 text-xs font-mono font-medium transition-transform hover:scale-105 ${riskBadge.color}`}
-            title="Click to view TrueHire Anti-Ghost Diagnosis"
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${riskBadge.dot}`} />
-            <span>Risk: {score}</span>
-            <HelpCircle size={12} className="opacity-70" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Match Score Badge */}
+            {matchScore !== undefined && onExplainMatchScore && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onExplainMatchScore(job);
+                }}
+                className="flex items-center gap-1 rounded-control border border-teal/40 bg-teal/10 px-2 py-0.5 text-xs font-mono font-medium text-teal hover:bg-teal/20 transition-all"
+                title="Click to view AI Match Breakdown"
+              >
+                <Sparkles size={11} />
+                <span>{matchScore}% Match</span>
+              </button>
+            )}
+
+            {/* Ghost Risk Badge */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onExplainGhostScore(job);
+              }}
+              className={`flex items-center gap-1.5 rounded-control border px-2.5 py-1 text-xs font-mono font-medium transition-transform hover:scale-105 ${riskBadge.color}`}
+              title="Click to view TrueHire Anti-Ghost Diagnosis"
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${riskBadge.dot}`} />
+              <span>Risk: {score}</span>
+              <HelpCircle size={12} className="opacity-70" />
+            </button>
+          </div>
         </div>
 
         {/* Meta info row */}

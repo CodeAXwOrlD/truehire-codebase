@@ -9,6 +9,7 @@ import { authRouter } from "./routes/auth.routes";
 import { requisitionsRouter } from "./routes/requisitions.routes";
 import { scoringRouter } from "./routes/scoring.routes";
 import { jobsRouter } from "./routes/jobs.routes";
+import { candidateRouter } from "./routes/candidate.routes";
 import { jobAggregator } from "./lib/jobAggregator";
 import { prisma } from "./lib/prisma";
 
@@ -19,14 +20,14 @@ app.use(helmet());
 app.use(
   cors({
     origin: env.corsAllowedOrigins,
-    credentials: true, // needed for the httpOnly refresh cookie
+    credentials: true,
   })
 );
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
 app.use(generalRateLimiter);
 
-// ---- Health check (used by deploy platforms + local sanity check) ----
+// ---- Health check ----
 app.get("/health", async (_req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -41,8 +42,9 @@ app.use("/api/auth", authRateLimiter, authRouter);
 app.use("/api/requisitions", requisitionsRouter);
 app.use("/api/scoring", scoringRouter);
 app.use("/api/jobs", jobsRouter);
+app.use("/api/candidate", candidateRouter);
 
-// ---- Error handler (must be last) ----
+// ---- Error handler ----
 app.use(errorHandler);
 
 // Start live job aggregation

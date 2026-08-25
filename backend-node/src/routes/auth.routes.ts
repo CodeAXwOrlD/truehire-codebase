@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma";
 import { hashPassword, verifyPassword, generateOtp, hashOtp, generateRefreshToken } from "../lib/password";
 import { signAccessToken } from "../lib/jwt";
 import { sendOtpEmail } from "../lib/mailer";
+import { sendOtpWhatsApp, normalizePhoneNumber } from "../lib/whatsapp";
 import { env } from "../config/env";
 import { requireAuth } from "../middleware/auth";
 import crypto from "node:crypto";
@@ -70,26 +71,86 @@ authRouter.post("/signup", async (req, res, next) => {
   }
 });
 
-// ---------- Verify email ----------
-const verifySchema = z.object({
-  email: z.string().email(),
+// ---------- WhatsApp Send OTP (1-Click Login / Register) ----------
+const sendWhatsAppOtpSchema = z.object({
+  phone: z.string().min(8, "Valid phone number required"),
+  role: z.enum(["candidate", "recruiter"]).optional().default("candidate"),
+});
+
+authRouter.post("/whatsapp/send-otp", async (req, res, next) => {
+  try {
+    const { phone, role } = sendWhatsAppOtpSchema.parse(req.body);
+    const normalized = normalizePhoneNumber(phone);
+    const virtualEmail = `${normalized}@whatsapp.truehire.dev`;
+
+    let user = await prisma.user.findUnique({ where: { email: virtualEmail } });
+    if (!user) {
+      // Auto-provision user account for WhatsApp passwordless authentication
+      const placeholderPassword = crypto.randomBytes(24).toString("hex");
+      const passwordHash = await hashPassword(placeholderPassword);
+      user = await prisma.user.create({
+        data: {
+          email: virtualEmail,
+          passwordHash,
+          role,
+          emailVerified: false,
+        },
+      });
+
+      if (role === "candidate") {
+        await prisma.candidate.create({ data: { userId: user.id } });
+      }
+    }
+
+    const { code, codeHash } = generateOtp();
+    await prisma.otpCode.create({
+      data: {
+        userId: user.id,
+        codeHash,
+        purpose: "verify_email",
+        expiresAt: new Date(Date.now() + OTP_TTL_MS),
+      },
+    });
+
+    await sendOtpWhatsApp({ toPhone: normalized, code, purpose: "login_otp" });
+
+    return res.json({
+      data: {
+        message: `Verification code sent to WhatsApp (+${normalized}).`,
+        phone: normalized,
+      },
+      error: null,
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// ---------- WhatsApp Verify OTP & Auto-Login ----------
+const verifyWhatsAppOtpSchema = z.object({
+  phone: z.string().min(8),
   code: z.string().length(6),
 });
 
-authRouter.post("/verify-email", async (req, res, next) => {
+authRouter.post("/whatsapp/verify-otp", async (req, res, next) => {
   try {
-    const { email, code } = verifySchema.parse(req.body);
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return res.status(400).json({ data: null, error: "Invalid code" });
+    const { phone, code } = verifyWhatsAppOtpSchema.parse(req.body);
+    const normalized = normalizePhoneNumber(phone);
+    const virtualEmail = `${normalized}@whatsapp.truehire.dev`;
+
+    const user = await prisma.user.findUnique({ where: { email: virtualEmail } });
+    if (!user) {
+      return res.status(400).json({ data: null, error: "Invalid phone number or expired session" });
+    }
 
     const codeHash = hashOtp(code);
     const otp = await prisma.otpCode.findFirst({
-      where: { userId: user.id, purpose: "verify_email", consumed: false, codeHash },
+      where: { userId: user.id, consumed: false, codeHash },
       orderBy: { createdAt: "desc" },
     });
 
     if (!otp || otp.expiresAt < new Date()) {
-      return res.status(400).json({ data: null, error: "Invalid or expired code" });
+      return res.status(400).json({ data: null, error: "Invalid or expired 6-digit code" });
     }
 
     await prisma.$transaction([
@@ -97,7 +158,140 @@ authRouter.post("/verify-email", async (req, res, next) => {
       prisma.user.update({ where: { id: user.id }, data: { emailVerified: true } }),
     ]);
 
-    return res.json({ data: { message: "Email verified. You can now log in." }, error: null });
+    // Issue JWT session
+    const accessToken = signAccessToken({ sub: user.id, role: user.role });
+    const { token: refreshToken, tokenHash } = generateRefreshToken();
+
+    await prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions);
+
+    return res.json({
+      data: {
+        accessToken,
+        user: { id: user.id, email: user.email, role: user.role },
+        message: "Successfully verified and authenticated!",
+      },
+      error: null,
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// ---------- Universal Verify (Email & WhatsApp) ----------
+const verifySchema = z.object({
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  identifier: z.string().optional(),
+  code: z.string().length(6),
+});
+
+authRouter.post("/verify", async (req, res, next) => {
+  try {
+    const body = verifySchema.parse(req.body);
+    const targetEmail =
+      body.email ||
+      (body.phone ? `${normalizePhoneNumber(body.phone)}@whatsapp.truehire.dev` : "") ||
+      (body.identifier?.includes("@") ? body.identifier : body.identifier ? `${normalizePhoneNumber(body.identifier)}@whatsapp.truehire.dev` : "");
+
+    if (!targetEmail) {
+      return res.status(400).json({ data: null, error: "Email or phone identifier is required" });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email: targetEmail } });
+    if (!user) return res.status(400).json({ data: null, error: "Invalid code or user not found" });
+
+    const codeHash = hashOtp(body.code);
+    const otp = await prisma.otpCode.findFirst({
+      where: { userId: user.id, consumed: false, codeHash },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (!otp || otp.expiresAt < new Date()) {
+      return res.status(400).json({ data: null, error: "Invalid or expired 6-digit code" });
+    }
+
+    await prisma.$transaction([
+      prisma.otpCode.update({ where: { id: otp.id }, data: { consumed: true } }),
+      prisma.user.update({ where: { id: user.id }, data: { emailVerified: true } }),
+    ]);
+
+    // Issue JWT session automatically on verification for instant login UX
+    const accessToken = signAccessToken({ sub: user.id, role: user.role });
+    const { token: refreshToken, tokenHash } = generateRefreshToken();
+
+    await prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions);
+
+    return res.json({
+      data: {
+        accessToken,
+        user: { id: user.id, email: user.email, role: user.role },
+        message: "Identity verified successfully!",
+      },
+      error: null,
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+authRouter.post("/verify-email", async (req, res, next) => {
+  // Alias to /verify
+  return (authRouter as any).handle(Object.assign(req, { url: "/verify" }), res, next);
+});
+
+// ---------- Resend OTP ----------
+authRouter.post("/resend-otp", async (req, res, next) => {
+  try {
+    const { email, phone, identifier } = req.body;
+    const target = email || phone || identifier;
+    if (!target) {
+      return res.status(400).json({ data: null, error: "Email or phone is required" });
+    }
+
+    const isEmail = target.includes("@") && !target.endsWith("@whatsapp.truehire.dev");
+    const targetEmail = isEmail
+      ? target.toLowerCase().trim()
+      : `${normalizePhoneNumber(target)}@whatsapp.truehire.dev`;
+
+    const user = await prisma.user.findUnique({ where: { email: targetEmail } });
+    if (!user) {
+      return res.json({ data: { message: "If that account exists, a new code has been sent." }, error: null });
+    }
+
+    const { code, codeHash } = generateOtp();
+    await prisma.otpCode.create({
+      data: {
+        userId: user.id,
+        codeHash,
+        purpose: "verify_email",
+        expiresAt: new Date(Date.now() + OTP_TTL_MS),
+      },
+    });
+
+    if (isEmail) {
+      await sendOtpEmail(user.email, code, "verify_email");
+    } else {
+      const cleanPhone = normalizePhoneNumber(target);
+      await sendOtpWhatsApp({ toPhone: cleanPhone, code, purpose: "login_otp" });
+    }
+
+    return res.json({ data: { message: "New verification code sent successfully." }, error: null });
   } catch (err) {
     return next(err);
   }

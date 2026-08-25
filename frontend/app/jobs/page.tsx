@@ -5,8 +5,11 @@ import Link from "next/link";
 import { VerifiedBeaconWordmark } from "@/components/brand/VerifiedBeacon";
 import { JobCard } from "@/components/jobs/JobCard";
 import { GhostScoreExplainModal } from "@/components/jobs/GhostScoreExplainModal";
+import { MatchScoreModal } from "@/components/jobs/MatchScoreModal";
+import { ProfileModal } from "@/components/candidate/ProfileModal";
 import { fetchJobs, UnifiedJob } from "@/lib/api/jobs";
-import { Search, SlidersHorizontal, Radio, ShieldCheck, Briefcase, ExternalLink, X, Loader2 } from "lucide-react";
+import { fetchCandidateProfile, calculateJobMatch, CandidateProfile, MatchScoreResult } from "@/lib/api/candidate";
+import { Search, ShieldCheck, Briefcase, ExternalLink, X, Loader2, Sparkles, User } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 const SOURCE_TABS = ["all", "Y Combinator", "LinkedIn", "RemoteOK", "Arbeitnow"];
@@ -20,7 +23,18 @@ export default function CandidateJobsPage() {
   const [maxRisk, setMaxRisk] = useState<number>(100);
   const [selectedJob, setSelectedJob] = useState<UnifiedJob | null>(null);
   const [explainJob, setExplainJob] = useState<UnifiedJob | null>(null);
-  const [liveStreamConnected, setLiveStreamConnected] = useState(true);
+  const [profile, setProfile] = useState<CandidateProfile>({
+    userId: "demo",
+    skills: ["React", "Next.js", "TypeScript", "Node.js", "PostgreSQL", "Python", "Tailwind"],
+    experienceYears: 4,
+    resumeText: "",
+    targetRole: "Fullstack / Frontend Engineer",
+  });
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [activeMatch, setActiveMatch] = useState<{ job: UnifiedJob; match: MatchScoreResult } | null>(null);
+
+  // Match score cache map: jobId -> match percentage
+  const [matchScores, setMatchScores] = useState<Record<string, number>>({});
 
   async function loadJobs() {
     setLoading(true);
@@ -33,8 +47,35 @@ export default function CandidateJobsPage() {
     setLoading(false);
     if (res.data) {
       setJobs(res.data);
+      computeMatches(res.data, profile.skills);
     }
   }
+
+  async function computeMatches(jobList: UnifiedJob[], skills: string[]) {
+    const scores: Record<string, number> = {};
+    for (const j of jobList) {
+      const res = await calculateJobMatch({
+        candidateSkills: skills,
+        jobTitle: j.title,
+        jobTags: j.tags,
+        jobDescription: j.description,
+      });
+      if (res.data) {
+        scores[j.id] = res.data.matchPercentage;
+      }
+    }
+    setMatchScores(scores);
+  }
+
+  useEffect(() => {
+    async function loadProfile() {
+      const pRes = await fetchCandidateProfile();
+      if (pRes.data) {
+        setProfile(pRes.data);
+      }
+    }
+    loadProfile();
+  }, []);
 
   useEffect(() => {
     loadJobs();
@@ -47,11 +88,6 @@ export default function CandidateJobsPage() {
 
     try {
       eventSource = new EventSource(sseUrl);
-
-      eventSource.onopen = () => {
-        setLiveStreamConnected(true);
-      };
-
       eventSource.onmessage = (e) => {
         try {
           const payload = JSON.parse(e.data);
@@ -65,18 +101,26 @@ export default function CandidateJobsPage() {
           console.warn("[SSE] Parse error:", err);
         }
       };
-
-      eventSource.onerror = () => {
-        setLiveStreamConnected(false);
-      };
     } catch {
-      setLiveStreamConnected(false);
+      // ignore
     }
 
     return () => {
       eventSource?.close();
     };
   }, []);
+
+  async function handleExplainMatch(job: UnifiedJob) {
+    const res = await calculateJobMatch({
+      candidateSkills: profile.skills,
+      jobTitle: job.title,
+      jobTags: job.tags,
+      jobDescription: job.description,
+    });
+    if (res.data) {
+      setActiveMatch({ job, match: res.data });
+    }
+  }
 
   const filteredJobs = jobs.filter((j) => {
     if (!search) return true;
@@ -114,6 +158,14 @@ export default function CandidateJobsPage() {
             <span>Live Stream Active ({jobs.length})</span>
           </div>
 
+          <button
+            onClick={() => setProfileOpen(true)}
+            className="flex items-center gap-1.5 rounded-control border border-border bg-glass px-3 py-1.5 text-xs text-ink hover:border-teal transition-colors"
+          >
+            <Sparkles size={13} className="text-teal" />
+            <span>My Skills ({profile.skills.length})</span>
+          </button>
+
           <Link href="/sign-in">
             <Button variant="secondary" className="text-xs">
               Recruiter Sign In
@@ -122,7 +174,7 @@ export default function CandidateJobsPage() {
         </div>
       </header>
 
-      {/* Main Hero & Search Banner */}
+      {/* Main Content */}
       <main className="flex flex-1 flex-col px-8 py-8 max-w-7xl mx-auto w-full">
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-ink">
@@ -130,14 +182,13 @@ export default function CandidateJobsPage() {
           </h1>
           <p className="text-sm text-ink-dim max-w-2xl">
             Continuously aggregated from Y Combinator, LinkedIn, RemoteOK, and top tech career portals.
-            Every listing is screened by our <span className="text-teal font-medium">Anti-Ghosting Algorithm</span>.
+            Screened by our <span className="text-teal font-medium">Anti-Ghosting</span> &amp; <span className="text-teal font-medium">AI Match</span> Engines.
           </p>
         </div>
 
         {/* Multi-Filter & Search Bar */}
         <div className="mt-6 flex flex-col gap-4 rounded-card border border-border bg-surface p-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            {/* Search Input */}
             <div className="flex flex-1 min-w-[260px] items-center gap-2.5 rounded-control border border-border bg-bg px-3.5 py-2">
               <Search size={16} className="text-ink-faint" />
               <input
@@ -153,7 +204,6 @@ export default function CandidateJobsPage() {
               )}
             </div>
 
-            {/* Quick Filter Controls */}
             <div className="flex flex-wrap items-center gap-3">
               <button
                 onClick={() => setRemoteOnly(!remoteOnly)}
@@ -166,7 +216,6 @@ export default function CandidateJobsPage() {
                 🌍 Remote Only
               </button>
 
-              {/* Ghost Risk Filter */}
               <div className="flex items-center gap-2 rounded-control border border-border bg-bg px-3 py-1.5 text-xs text-ink-dim">
                 <ShieldCheck size={14} className="text-teal" />
                 <span>Max Risk:</span>
@@ -176,14 +225,13 @@ export default function CandidateJobsPage() {
                   className="bg-transparent text-xs text-ink font-mono font-medium outline-none"
                 >
                   <option value={100}>All Listings (0-100)</option>
-                  <option value={65}>Verified & Moderate (&lt;65)</option>
+                  <option value={65}>Verified &amp; Moderate (&lt;65)</option>
                   <option value={30}>Verified Active Only (&lt;30)</option>
                 </select>
               </div>
             </div>
           </div>
 
-          {/* Platform Source Tabs */}
           <div className="flex items-center gap-2 overflow-x-auto border-t border-border/60 pt-3">
             <span className="text-xs text-ink-faint shrink-0">Source:</span>
             {SOURCE_TABS.map((tab) => (
@@ -208,9 +256,10 @@ export default function CandidateJobsPage() {
             <p className="text-xs font-mono text-ink-dim">
               Showing {filteredJobs.length} live openings
             </p>
-            {maxRisk < 100 && (
-              <span className="text-xs font-mono text-teal">
-                🛡️ Filtered: Only jobs with Ghost Risk &lt; {maxRisk}
+            {profile.skills.length > 0 && (
+              <span className="text-xs font-mono text-teal flex items-center gap-1">
+                <Sparkles size={12} />
+                AI Match active for: {profile.skills.slice(0, 4).join(", ")}
               </span>
             )}
           </div>
@@ -225,18 +274,6 @@ export default function CandidateJobsPage() {
               <Briefcase size={22} className="text-ink-faint" />
               <p className="text-sm font-medium text-ink">No matching jobs found</p>
               <p className="text-xs text-ink-faint">Try adjusting your filters or search keywords.</p>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setSearch("");
-                  setSourceFilter("all");
-                  setRemoteOnly(false);
-                  setMaxRisk(100);
-                }}
-                className="mt-2 text-xs"
-              >
-                Reset Filters
-              </Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -244,7 +281,9 @@ export default function CandidateJobsPage() {
                 <JobCard
                   key={job.id}
                   job={job}
+                  matchScore={matchScores[job.id]}
                   onExplainGhostScore={(j) => setExplainJob(j)}
+                  onExplainMatchScore={handleExplainMatch}
                   onSelectJob={(j) => setSelectedJob(j)}
                 />
               ))}
@@ -258,6 +297,25 @@ export default function CandidateJobsPage() {
         job={explainJob}
         open={Boolean(explainJob)}
         onClose={() => setExplainJob(null)}
+      />
+
+      {/* Match Score Explainability Modal */}
+      <MatchScoreModal
+        job={activeMatch?.job || null}
+        match={activeMatch?.match || null}
+        open={Boolean(activeMatch)}
+        onClose={() => setActiveMatch(null)}
+      />
+
+      {/* Candidate Profile / Skills Modal */}
+      <ProfileModal
+        profile={profile}
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        onSaved={(p) => {
+          setProfile(p);
+          computeMatches(jobs, p.skills);
+        }}
       />
 
       {/* Job Details Drawer */}
@@ -294,9 +352,12 @@ export default function CandidateJobsPage() {
                   💰 {selectedJob.salaryFormatted}
                 </span>
               )}
-              <span className="rounded-control border border-border px-2.5 py-1 text-ink-dim">
-                Source: {selectedJob.source}
-              </span>
+              {matchScores[selectedJob.id] && (
+                <span className="rounded-control border border-teal/40 bg-teal/10 px-2.5 py-1 font-mono text-teal flex items-center gap-1">
+                  <Sparkles size={12} />
+                  {matchScores[selectedJob.id]}% Match
+                </span>
+              )}
             </div>
 
             <div className="mt-6 flex-1">
