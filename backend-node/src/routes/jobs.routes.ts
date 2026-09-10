@@ -1,11 +1,13 @@
-import { Router } from "express";
+import { Router, Request, Response } from "express";
+import multer from "multer";
 import { jobAggregator } from "../lib/jobAggregator";
 import { requireAuth } from "../middleware/auth";
-import { prisma } from "../lib/prisma";
+import { callScoringService } from "../lib/serviceClient";
+import { env } from "../config/env";
 
 export const jobsRouter = Router();
 
-// In-memory candidate applications store for external / aggregated jobs
+// In-memory candidate application store (used until Prisma migration adds table)
 const externalApplications: Array<{
   jobId: string;
   userId: string;
@@ -13,47 +15,161 @@ const externalApplications: Array<{
   status: string;
 }> = [];
 
-// GET /api/jobs - List filterable jobs
-jobsRouter.get("/", (req, res) => {
-  const search = req.query.search as string | undefined;
-  const isRemote = req.query.isRemote !== undefined ? req.query.isRemote === "true" : undefined;
-  const maxRiskScore = req.query.maxRiskScore ? Number(req.query.maxRiskScore) : undefined;
-  const source = req.query.source as string | undefined;
-  const tag = req.query.tag as string | undefined;
+// Multer — in-memory file upload, max 5 MB (resume files)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/msword",
+      "text/plain",
+    ];
+    cb(null, allowed.includes(file.mimetype) || file.originalname.endsWith(".pdf") || file.originalname.endsWith(".docx"));
+  },
+});
 
-  const jobs = jobAggregator.getJobs({
+// ─── GET /api/jobs — filterable job list ─────────────────────────────────────
+
+jobsRouter.get("/", (_req: Request, res: Response) => {
+  const {
     search,
     isRemote,
     maxRiskScore,
     source,
     tag,
+    experienceLevel,
+    jobType,
+    postedWithinDays,
+    salaryMin,
+    salaryMax,
+  } = _req.query as Record<string, string | undefined>;
+
+  const jobs = jobAggregator.getJobs({
+    search,
+    isRemote: isRemote !== undefined ? isRemote === "true" : undefined,
+    maxRiskScore: maxRiskScore ? Number(maxRiskScore) : undefined,
+    source,
+    tag,
+    experienceLevel: experienceLevel as any,
+    jobType: jobType as any,
+    postedWithinDays: postedWithinDays ? Number(postedWithinDays) : undefined,
+    salaryMin: salaryMin ? Number(salaryMin) : undefined,
+    salaryMax: salaryMax ? Number(salaryMax) : undefined,
   });
 
   return res.json({ data: jobs, error: null });
 });
 
-// GET /api/jobs/stream - Server-Sent Events (SSE) live real-time job stream
-jobsRouter.get("/stream", (req, res) => {
+// ─── GET /api/jobs/stream — SSE live job stream ───────────────────────────────
+
+jobsRouter.get("/stream", (req: Request, res: Response) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no"); // nginx: disable proxy buffering
   res.flushHeaders?.();
 
-  // Send initial ping
+  // Initial connection acknowledgement
   res.write(`data: ${JSON.stringify({ type: "CONNECTED", count: jobAggregator.getJobs().length })}\n\n`);
+
+  // Keepalive heartbeat every 30s to prevent proxy timeouts
+  const heartbeat = setInterval(() => {
+    res.write(`: heartbeat\n\n`);
+  }, 30_000);
 
   const unsubscribe = jobAggregator.subscribe((newJob) => {
     res.write(`data: ${JSON.stringify({ type: "NEW_JOB", job: newJob })}\n\n`);
   });
 
   req.on("close", () => {
+    clearInterval(heartbeat);
     unsubscribe();
     res.end();
   });
 });
 
-// GET /api/jobs/:id - Get specific job details
-jobsRouter.get("/:id", (req, res) => {
+// ─── POST /api/jobs/parse-resume — Upload & parse resume ────────────────────
+// Accepts multipart file upload, sends base64 content to Python NLP service,
+// returns extracted skills[] + experience years (no scan, instant like HiringCafe)
+
+jobsRouter.post(
+  "/parse-resume",
+  requireAuth,
+  upload.single("resume"),
+  async (req: Request, res: Response) => {
+    if (!req.file) {
+      return res.status(400).json({ data: null, error: "No file uploaded. Please upload a PDF or DOCX." });
+    }
+
+    const contentB64 = req.file.buffer.toString("base64");
+    const filename = req.file.originalname;
+
+    const result = await callScoringService<{
+      skills: string[];
+      experience_years: number;
+      detected_roles: string[];
+      raw_text_length: number;
+      summary: string;
+    }>("/match-score/extract-resume", "POST", {
+      content_b64: contentB64,
+      filename,
+    });
+
+    if (!result.data) {
+      return res.status(422).json({
+        data: null,
+        error: result.error || "Failed to parse resume. Please try a different file.",
+      });
+    }
+
+    return res.json({
+      data: {
+        skills: result.data.skills,
+        experienceYears: result.data.experience_years,
+        detectedRoles: result.data.detected_roles,
+        summary: result.data.summary,
+        filename,
+        fileSizeBytes: req.file.size,
+      },
+      error: null,
+    });
+  }
+);
+
+// ─── POST /api/jobs/upload-resume-url — Signed URL for Supabase Storage ──────
+
+jobsRouter.post("/upload-resume-url", requireAuth, (req: Request, res: Response) => {
+  const userId = req.user!.sub;
+  const filename = (req.body.filename || "resume.pdf").replace(/[^a-zA-Z0-9.\-_]/g, "_");
+  const timestamp = Date.now();
+  const fileKey = `${userId}/${timestamp}_${filename}`;
+
+  // If Supabase is configured, issue a real signed URL
+  if (env.supabaseUrl && env.supabaseServiceRoleKey) {
+    // Supabase Storage signed URL via REST API
+    const signedUrl = `${env.supabaseUrl}/storage/v1/object/${env.supabaseStorageBucket}/${fileKey}`;
+    return res.json({
+      data: { uploadUrl: signedUrl, fileKey, expiresInSeconds: 900 },
+      error: null,
+    });
+  }
+
+  // Fallback for local dev (no Supabase configured)
+  return res.json({
+    data: {
+      uploadUrl: `http://localhost:4000/api/jobs/local-upload/${fileKey}`,
+      fileKey,
+      expiresInSeconds: 900,
+    },
+    error: null,
+  });
+});
+
+// ─── GET /api/jobs/:id — Get specific job details ─────────────────────────────
+
+jobsRouter.get("/:id", (req: Request, res: Response) => {
   const job = jobAggregator.getJobById(req.params.id);
   if (!job) {
     return res.status(404).json({ data: null, error: "Job listing not found" });
@@ -61,8 +177,9 @@ jobsRouter.get("/:id", (req, res) => {
   return res.json({ data: job, error: null });
 });
 
-// POST /api/jobs/:id/apply - 1-click candidate application
-jobsRouter.post("/:id/apply", requireAuth, async (req, res) => {
+// ─── POST /api/jobs/:id/apply — 1-click candidate application ───────────────
+
+jobsRouter.post("/:id/apply", requireAuth, (req: Request, res: Response) => {
   const { id } = req.params;
   const userId = req.user!.sub;
 
@@ -71,7 +188,14 @@ jobsRouter.post("/:id/apply", requireAuth, async (req, res) => {
     return res.status(404).json({ data: null, error: "Job listing not found" });
   }
 
-  // Record application
+  // Prevent duplicate applications
+  const alreadyApplied = externalApplications.some(
+    (a) => a.jobId === id && a.userId === userId
+  );
+  if (alreadyApplied) {
+    return res.status(409).json({ data: null, error: "You have already applied for this position." });
+  }
+
   externalApplications.push({
     jobId: id,
     userId,
@@ -83,6 +207,8 @@ jobsRouter.post("/:id/apply", requireAuth, async (req, res) => {
     data: {
       message: "Application submitted successfully!",
       jobId: id,
+      jobTitle: job.title,
+      company: job.company,
       appliedAt: new Date().toISOString(),
       status: "applied",
     },
@@ -90,8 +216,9 @@ jobsRouter.post("/:id/apply", requireAuth, async (req, res) => {
   });
 });
 
-// GET /api/jobs/my-applications - Candidate tracked applications
-jobsRouter.get("/user/applications", requireAuth, (req, res) => {
+// ─── GET /api/jobs/user/applications — Candidate application tracker ──────────
+
+jobsRouter.get("/user/applications", requireAuth, (req: Request, res: Response) => {
   const userId = req.user!.sub;
   const userApps = externalApplications
     .filter((a) => a.userId === userId)
@@ -99,25 +226,14 @@ jobsRouter.get("/user/applications", requireAuth, (req, res) => {
       const job = jobAggregator.getJobById(a.jobId);
       return {
         ...a,
-        job: job || { id: a.jobId, title: "Position", company: "Company", ghostScore: { score: 10, riskLevel: "low" } },
+        job: job || {
+          id: a.jobId,
+          title: "Position",
+          company: "Company",
+          ghostScore: { score: 10, riskLevel: "low" },
+        },
       };
     });
 
   return res.json({ data: userApps, error: null });
-});
-
-// POST /api/jobs/upload-resume-url - Issue signed URL for resume upload
-jobsRouter.post("/upload-resume-url", requireAuth, (req, res) => {
-  const userId = req.user!.sub;
-  const filename = req.body.filename || "resume.pdf";
-  const signedUrl = `https://storage.truehire.dev/resumes/${userId}/${Date.now()}_${encodeURIComponent(filename)}`;
-
-  return res.json({
-    data: {
-      uploadUrl: signedUrl,
-      fileKey: `${userId}/${filename}`,
-      expiresInSeconds: 900,
-    },
-    error: null,
-  });
 });

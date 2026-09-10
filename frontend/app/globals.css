@@ -13,7 +13,7 @@ body {
 
 /* Visible focus ring everywhere — non-negotiable per Design.md §6 */
 :focus-visible {
-  outline: 2px solid #f2f2f3;
+  outline: 2px solid #2FBFA8;
   outline-offset: 2px;
 }
 
@@ -22,4 +22,68 @@ body {
   * {
     cursor: none !important;
   }
+}
+
+/* ── Shimmer animation for skeleton loaders ─────────────────────────────── */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+/* ── Smooth custom scrollbar ─────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ── Reduced motion: disable all animations and transitions ──────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Specifically kill the live pulse dot animation */
+  .animate-ping {
+    animation: none !important;
+    opacity: 0.6;
+  }
+
+  /* Kill shimmer */
+  .animate-shimmer {
+    animation: none !important;
+  }
+}
+
+/* ── Textarea auto-grow utility ──────────────────────────────────────────── */
+textarea {
+  field-sizing: content;
+}
+
+/* ── Smooth selection color ──────────────────────────────────────────────── */
+::selection {
+  background: rgba(47, 191, 168, 0.25);
+  color: #f2f2f3;
 }

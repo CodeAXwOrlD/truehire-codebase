@@ -1,5 +1,7 @@
 import re
-from fastapi import APIRouter
+import io
+import base64
+from fastapi import APIRouter, UploadFile, File
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -13,12 +15,21 @@ KNOWN_TECH_SKILLS = [
     "postgresql", "postgres", "mysql", "mongodb", "redis", "elasticsearch", "sqlite",
     "graphql", "rest", "grpc", "prisma", "typeorm", "docker", "kubernetes", "k8s",
     "aws", "gcp", "azure", "ci/cd", "terraform", "linux", "git", "tailwind", "css", "html",
-    "llm", "openai", "pytorch", "tensorflow", "nlp", "machine learning", "distributed systems"
+    "llm", "openai", "pytorch", "tensorflow", "nlp", "machine learning", "distributed systems",
+    "kafka", "rabbitmq", "celery", "websocket", "webrtc", "solidity", "web3", "supabase",
+    "firebase", "vercel", "cloudflare", "nginx", "apache", "ansible", "jenkins", "github actions",
+    "swift", "kotlin", "flutter", "react native", "unity", "unreal", "figma",
 ]
 
 
 class ParseResumeInput(BaseModel):
     resume_text: str
+
+
+class ParseResumeB64Input(BaseModel):
+    """For base64-encoded file content sent from Node.js backend."""
+    content_b64: str
+    filename: str  # .pdf or .docx
 
 
 class ParsedProfileResult(BaseModel):
@@ -61,26 +72,124 @@ def extract_skills_from_text(text: str) -> List[str]:
                 canonical = skill.upper()
             elif skill in ["ci/cd"]:
                 canonical = "CI/CD"
+            elif skill in ["k8s", "kubernetes"]:
+                canonical = "Kubernetes"
+            elif skill == "react native":
+                canonical = "React Native"
+            elif skill == "github actions":
+                canonical = "GitHub Actions"
+            elif skill == "machine learning":
+                canonical = "Machine Learning"
+            elif skill == "distributed systems":
+                canonical = "Distributed Systems"
             found.append(canonical)
     return sorted(list(set(found)))
 
 
+def detect_roles(text: str) -> List[str]:
+    lower = text.lower()
+    roles = []
+    if "frontend" in lower or "front-end" in lower or "ui engineer" in lower:
+        roles.append("Frontend Engineer")
+    if "backend" in lower or "back-end" in lower or "server-side" in lower:
+        roles.append("Backend Engineer")
+    if "fullstack" in lower or "full stack" in lower or "full-stack" in lower:
+        roles.append("Fullstack Engineer")
+    if "devops" in lower or "infrastructure" in lower or "platform engineer" in lower:
+        roles.append("DevOps / Infrastructure Engineer")
+    if "ai " in lower or "machine learning" in lower or "ml engineer" in lower:
+        roles.append("AI / ML Engineer")
+    if "mobile" in lower or "ios" in lower or "android" in lower:
+        roles.append("Mobile Engineer")
+    if "data engineer" in lower or "data scientist" in lower:
+        roles.append("Data Engineer")
+    return roles if roles else ["Software Engineer"]
+
+
+def extract_text_from_pdf_bytes(content: bytes) -> str:
+    """Extract text from PDF using pdfplumber."""
+    try:
+        import pdfplumber
+        text_parts = []
+        with pdfplumber.open(io.BytesIO(content)) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text_parts.append(page_text)
+        return "\n".join(text_parts)
+    except ImportError:
+        return ""
+    except Exception:
+        return ""
+
+
+def extract_text_from_docx_bytes(content: bytes) -> str:
+    """Extract text from DOCX using python-docx."""
+    try:
+        from docx import Document
+        doc = Document(io.BytesIO(content))
+        paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+        return "\n".join(paragraphs)
+    except ImportError:
+        return ""
+    except Exception:
+        return ""
+
+
+@router.post("/extract-resume")
+def extract_resume_from_file(data: ParseResumeB64Input):
+    """
+    Accepts a base64-encoded PDF or DOCX file, extracts text,
+    then runs NLP skill extraction. Used by Node.js backend to
+    process resume uploads without any scanning delay.
+    """
+    try:
+        content = base64.b64decode(data.content_b64)
+    except Exception:
+        return JSONResponse({"data": None, "error": "Invalid base64 content"}, status_code=400)
+
+    filename_lower = data.filename.lower()
+    if filename_lower.endswith(".pdf"):
+        text = extract_text_from_pdf_bytes(content)
+    elif filename_lower.endswith(".docx") or filename_lower.endswith(".doc"):
+        text = extract_text_from_docx_bytes(content)
+    else:
+        # Treat as plain text
+        try:
+            text = content.decode("utf-8", errors="ignore")
+        except Exception:
+            text = ""
+
+    if not text.strip():
+        return JSONResponse({
+            "data": None,
+            "error": "Could not extract text from this file. Please ensure it is a valid PDF or DOCX."
+        }, status_code=422)
+
+    skills = extract_skills_from_text(text)
+    exp_matches = re.findall(r"(\d+)\+?\s*(?:years|yrs)", text, re.IGNORECASE)
+    years = max([int(y) for y in exp_matches if int(y) < 40], default=3)
+    roles = detect_roles(text)
+
+    return JSONResponse({
+        "data": {
+            "skills": skills,
+            "experience_years": years,
+            "detected_roles": roles,
+            "raw_text_length": len(text),
+            "summary": f"Extracted {len(skills)} technical skills and {years}+ years of experience from your resume.",
+        },
+        "error": None,
+    })
+
+
 @router.post("/parse-resume")
 def parse_resume(data: ParseResumeInput):
+    """Parse raw resume text (existing endpoint, unchanged behaviour)."""
     skills = extract_skills_from_text(data.resume_text)
     exp_matches = re.findall(r"(\d+)\+?\s*(?:years|yrs)", data.resume_text, re.IGNORECASE)
     years = max([int(y) for y in exp_matches if int(y) < 40], default=3)
-
-    roles = []
-    lower = data.resume_text.lower()
-    if "frontend" in lower: roles.append("Frontend Engineer")
-    if "backend" in lower: roles.append("Backend Engineer")
-    if "fullstack" in lower or "full stack" in lower: roles.append("Fullstack Engineer")
-    if "devops" in lower or "infra" in lower: roles.append("DevOps / Infrastructure Engineer")
-    if "ai" in lower or "machine learning" in lower: roles.append("AI / ML Engineer")
-
-    if not roles:
-        roles = ["Software Engineer"]
+    roles = detect_roles(data.resume_text)
 
     return JSONResponse({
         "data": {

@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { X, Sparkles, User, FileText, Loader2, Plus } from "lucide-react";
+import { X, Sparkles, Plus, User, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { CandidateProfile, updateCandidateProfile } from "@/lib/api/candidate";
+import { ResumeUploadZone } from "@/components/jobs/ResumeUploadZone";
+import type { ResumeParseResult } from "@/lib/api/jobs";
 
 interface ProfileModalProps {
   profile: CandidateProfile;
@@ -17,6 +19,12 @@ export function ProfileModal({ profile, open, onClose, onSaved }: ProfileModalPr
   const [newSkill, setNewSkill] = useState("");
   const [resumeText, setResumeText] = useState(profile.resumeText || "");
   const [saving, setSaving] = useState(false);
+
+  function handleResumeParsed(result: ResumeParseResult) {
+    const combined = [...skills, ...result.skills];
+    const merged = combined.filter((skill, idx) => combined.indexOf(skill) === idx);
+    setSkills(merged);
+  }
 
   if (!open) return null;
 
@@ -51,14 +59,15 @@ export function ProfileModal({ profile, open, onClose, onSaved }: ProfileModalPr
     >
       <div
         role="dialog"
-        aria-label="Candidate profile"
+        aria-modal="true"
+        aria-labelledby="profile-modal-title"
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-lg rounded-card border border-border-strong bg-surface p-6 shadow-2xl"
       >
         <div className="flex items-center justify-between border-b border-border pb-4">
           <div className="flex items-center gap-2">
             <User size={18} className="text-teal" />
-            <h2 className="text-base font-semibold text-ink">Candidate Skills & Profile</h2>
+            <h2 id="profile-modal-title" className="text-base font-semibold text-ink">Candidate Skills &amp; Profile</h2>
           </div>
           <button onClick={onClose} className="rounded-control p-1 text-ink-faint hover:text-ink">
             <X size={16} />
@@ -97,6 +106,15 @@ export function ProfileModal({ profile, open, onClose, onSaved }: ProfileModalPr
             </div>
           </div>
 
+          {/* Resume file upload (compact zone) */}
+          <div>
+            <label className="text-xs font-medium text-ink-dim flex items-center gap-1.5 mb-2">
+              <Sparkles size={13} className="text-teal" />
+              Upload Resume to Auto-Extract Skills (PDF / DOCX)
+            </label>
+            <ResumeUploadZone onParsed={handleResumeParsed} compact />
+          </div>
+
           <div>
             <label className="text-xs font-medium text-ink-dim flex items-center gap-1.5">
               <FileText size={13} className="text-ink-faint" />
@@ -118,7 +136,7 @@ export function ProfileModal({ profile, open, onClose, onSaved }: ProfileModalPr
           </Button>
           <Button variant="primary" onClick={handleSave} disabled={saving} className="text-xs flex items-center gap-1.5">
             {saving && <Loader2 size={13} className="animate-spin" />}
-            Save & Update Matches
+            Save &amp; Update Matches
           </Button>
         </div>
       </div>

@@ -10,6 +10,7 @@ import { requisitionsRouter } from "./routes/requisitions.routes";
 import { scoringRouter } from "./routes/scoring.routes";
 import { jobsRouter } from "./routes/jobs.routes";
 import { candidateRouter } from "./routes/candidate.routes";
+import { analyticsRouter } from "./routes/analytics.routes";
 import { jobAggregator } from "./lib/jobAggregator";
 import { prisma } from "./lib/prisma";
 
@@ -23,7 +24,7 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
 app.use(generalRateLimiter);
 
@@ -43,6 +44,7 @@ app.use("/api/requisitions", requisitionsRouter);
 app.use("/api/scoring", scoringRouter);
 app.use("/api/jobs", jobsRouter);
 app.use("/api/candidate", candidateRouter);
+app.use("/api/analytics", analyticsRouter);
 
 // ---- Error handler ----
 app.use(errorHandler);

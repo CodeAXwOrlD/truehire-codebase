@@ -30,7 +30,22 @@ const config: Config = {
         control: "8px",
       },
     },
+    animation: {
+      shimmer: "shimmer 1.6s ease-in-out infinite",
+      "in": "fade-in 0.15s ease-out",
+    },
+    keyframes: {
+      shimmer: {
+        "0%": { transform: "translateX(-100%)" },
+        "100%": { transform: "translateX(100%)" },
+      },
+      "fade-in": {
+        "0%": { opacity: "0" },
+        "100%": { opacity: "1" },
+      },
+    },
   },
+  safelist: ["animate-shimmer", "animate-in", "fade-in"],
   plugins: [],
 };
 

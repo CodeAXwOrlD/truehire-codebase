@@ -8,6 +8,10 @@ function required(name: string): string {
   return value;
 }
 
+function optional(name: string, fallback = ""): string {
+  return process.env[name] ?? fallback;
+}
+
 export const env = {
   port: Number(process.env.PORT ?? 4000),
   nodeEnv: process.env.NODE_ENV ?? "development",
@@ -20,25 +24,39 @@ export const env = {
 
   databaseUrl: required("DATABASE_URL"),
 
-  supabaseUrl: process.env.SUPABASE_URL ?? "",
-  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
-  supabaseStorageBucket: process.env.SUPABASE_STORAGE_BUCKET ?? "resumes",
+  supabaseUrl: optional("SUPABASE_URL"),
+  supabaseServiceRoleKey: optional("SUPABASE_SERVICE_ROLE_KEY"),
+  supabaseStorageBucket: optional("SUPABASE_STORAGE_BUCKET", "resumes"),
 
   jwtAccessSecret: required("JWT_ACCESS_SECRET"),
-  jwtAccessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN ?? "15m",
+  jwtAccessExpiresIn: optional("JWT_ACCESS_EXPIRES_IN", "15m"),
   jwtRefreshSecret: required("JWT_REFRESH_SECRET"),
-  jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? "7d",
+  jwtRefreshExpiresIn: optional("JWT_REFRESH_EXPIRES_IN", "7d"),
 
-  smtpHost: process.env.SMTP_HOST ?? "",
+  smtpHost: optional("SMTP_HOST"),
   smtpPort: Number(process.env.SMTP_PORT ?? 465),
-  smtpUser: process.env.SMTP_USER ?? "",
-  smtpPass: process.env.SMTP_PASS ?? "",
-  mailFrom: process.env.MAIL_FROM ?? "TrueHire <no-reply@example.com>",
+  smtpUser: optional("SMTP_USER"),
+  smtpPass: optional("SMTP_PASS"),
+  mailFrom: optional("MAIL_FROM", "TrueHire <no-reply@example.com>"),
 
-  whatsappToken: process.env.WHATSAPP_TOKEN ?? "",
-  whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID ?? "",
-  whatsappTemplateName: process.env.WHATSAPP_TEMPLATE_NAME ?? "",
+  whatsappToken: optional("WHATSAPP_TOKEN"),
+  whatsappPhoneNumberId: optional("WHATSAPP_PHONE_NUMBER_ID"),
+  whatsappTemplateName: optional("WHATSAPP_TEMPLATE_NAME"),
 
   serviceSharedSecret: required("SERVICE_SHARED_SECRET"),
-  scoringServiceUrl: process.env.SCORING_SERVICE_URL ?? "http://localhost:8000",
+  scoringServiceUrl: optional("SCORING_SERVICE_URL", "http://localhost:8000"),
+
+  // --- Optional: External Job Board API Keys ---
+  // JSearch (RapidAPI) aggregates LinkedIn, Indeed, Glassdoor, ZipRecruiter
+  // Free tier: https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch
+  jsearchApiKey: optional("JSEARCH_API_KEY"),
+
+  // FindWork.dev — quality developer roles (free registration required)
+  // https://findwork.dev/api/
+  findworkApiKey: optional("FINDWORK_API_KEY"),
+
+  // Adzuna — global job board API (free tier, 250 req/day)
+  // https://developer.adzuna.com/
+  adzunaAppId: optional("ADZUNA_APP_ID"),
+  adzunaApiKey: optional("ADZUNA_API_KEY"),
 };
