@@ -7,6 +7,7 @@ import { JobCard } from "@/components/jobs/JobCard";
 import { GhostScoreExplainModal } from "@/components/jobs/GhostScoreExplainModal";
 import { MatchScoreModal } from "@/components/jobs/MatchScoreModal";
 import { ProfileModal } from "@/components/candidate/ProfileModal";
+import { UserMenu } from "@/components/ui/UserMenu";
 import { fetchJobs, UnifiedJob } from "@/lib/api/jobs";
 import { fetchCandidateProfile, calculateJobMatch, CandidateProfile, MatchScoreResult } from "@/lib/api/candidate";
 import { Search, ShieldCheck, Briefcase, ExternalLink, X, Loader2, Sparkles, User } from "lucide-react";
@@ -166,11 +167,7 @@ export default function CandidateJobsPage() {
             <span>My Skills ({profile.skills.length})</span>
           </button>
 
-          <Link href="/sign-in">
-            <Button variant="secondary" className="text-xs">
-              Recruiter Sign In
-            </Button>
-          </Link>
+          <UserMenu onOpenSkills={() => setProfileOpen(true)} />
         </div>
       </header>
 

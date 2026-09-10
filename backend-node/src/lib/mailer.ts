@@ -174,8 +174,8 @@ export async function sendOtpEmail(to: string, code: string, purpose: "verify_em
     }
   }
 
-  // 2. SMTP Transport
-  if (env.smtpHost) {
+  // 2. SMTP Transport (if credentials configured)
+  if (env.smtpHost && env.smtpUser && env.smtpPass) {
     try {
       await transporter.sendMail({
         from: env.mailFrom || `TrueHire Security <${env.smtpUser}>`,

@@ -11,13 +11,6 @@ export interface LoginInput {
   password: string;
 }
 
-export interface VerifyInput {
-  email?: string;
-  phone?: string;
-  identifier?: string;
-  code: string;
-}
-
 export interface AuthResponse {
   accessToken?: string;
   message?: string;
@@ -29,10 +22,14 @@ export interface AuthResponse {
 }
 
 export async function signup(input: SignupInput) {
-  return apiFetch<AuthResponse>("/api/auth/signup", {
+  const res = await apiFetch<AuthResponse>("/api/auth/signup", {
     method: "POST",
     body: JSON.stringify(input),
   });
+  if (res.data?.accessToken) {
+    setAccessToken(res.data.accessToken);
+  }
+  return res;
 }
 
 export async function login(input: LoginInput) {
@@ -44,42 +41,6 @@ export async function login(input: LoginInput) {
     setAccessToken(res.data.accessToken);
   }
   return res;
-}
-
-export async function sendWhatsAppOtp(phone: string, role: "candidate" | "recruiter" = "candidate") {
-  return apiFetch<{ message: string; phone: string }>("/api/auth/whatsapp/send-otp", {
-    method: "POST",
-    body: JSON.stringify({ phone, role }),
-  });
-}
-
-export async function verifyWhatsAppOtp(phone: string, code: string) {
-  const res = await apiFetch<AuthResponse>("/api/auth/whatsapp/verify-otp", {
-    method: "POST",
-    body: JSON.stringify({ phone, code }),
-  });
-  if (res.data?.accessToken) {
-    setAccessToken(res.data.accessToken);
-  }
-  return res;
-}
-
-export async function verifyEmail(input: VerifyInput) {
-  const res = await apiFetch<AuthResponse>("/api/auth/verify", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-  if (res.data?.accessToken) {
-    setAccessToken(res.data.accessToken);
-  }
-  return res;
-}
-
-export async function resendOtp(identifier: { email?: string; phone?: string; identifier?: string }) {
-  return apiFetch<{ message: string }>("/api/auth/resend-otp", {
-    method: "POST",
-    body: JSON.stringify(identifier),
-  });
 }
 
 export async function logout() {

@@ -14,7 +14,7 @@ Phase 6 COMPLETE.
 ## Decisions log
 *(most recent first)*
 
-- **Meta WhatsApp Cloud API Free OTP & Modern Box Auth UI implemented (v2):** Added 100% free WhatsApp OTP verification (~1,000 free conversations/month on Meta Graph API). Built 6-box auto-focus OTP component with paste support, dual sign-in tabs (WhatsApp 1-Click vs Password), and holographic Verified Beacon login/unlock success animation.
+- **Direct Instant Authentication & Holographic Unlock (v2):** Replaced OTP verification with direct instant registration and login. Users sign up/sign in with Email & Password, trigger the holographic Verified Beacon unlock animation, and enter their respective workspaces immediately with zero friction or external email dependencies.
 - **AI Match-Score Architecture implemented (v2):** Python FastAPI microservice extracts skills via NLP regex dictionary matching from raw resume/bio text. Calculates compatibility score (0-100%) against job titles, tags, and job descriptions with breakdown of matched vs missing competencies.
 - **Candidate Skill Profile & Match UI locked (v1):** Live Job Board (/jobs) displays glowing Teal Match Badge (e.g. 90% Match) on every listing. Candidate can open "My Skills" modal to customize tech stack and trigger live match recomputation. Match Breakdown Modal displays matched skills, missing skills, and interview tailoring tips.
 - **Live Multi-Source Job Aggregator Engine implemented (v2):** Aggregates live jobs from public APIs (RemoteOK, Arbeitnow, YC/HN), normalizes them into unified schema, automatically scores every job via internal Python scoring service, and broadcasts real-time updates to connected candidate clients via SSE.
@@ -30,7 +30,7 @@ Phase 6 COMPLETE.
 - **Session 3 (Phase 2 & Phase 3 Requisitions):** Built Requisitions CRUD, detail pipeline Kanban, and recruiter dashboard home.
 - **Session 4 (Phase 4 & Phase 5 Live Job Board + Ghost-Score Engine):** Built Python Ghost-Score calculation & explainability engine, Node HMAC-SHA256 service client, Multi-source live job aggregator & SSE streamer, Candidate Live Job Board (/jobs) with multi-filters and detail drawer.
 - **Session 5 (Phase 6 AI Match-Score Engine & Resume Parsing):** Implemented Python NLP resume parser & match score heuristic router, Node candidate routes, Candidate Skills & Profile Modal, dynamic Match % badges across live jobs, and Match Breakdown modal. All services verified with 0 errors.
-- **Session 6 (WhatsApp Cloud API & Fancy Box OTP UI):** Implemented WhatsApp Cloud API integration in Node API, 6-slot Box OTP Input component with auto-focus & clipboard paste, and holographic biometric Verified Beacon unlock animation. Verified with 0 build errors.
+- **Session 6 (Frictionless Direct Auth & Holographic Unlock):** Streamlined authentication to direct email/password sign-up and login with instant JWT session issuance and holographic biometric Verified Beacon unlock animation. Verified with 0 errors.
 
 ## Known open questions
 - PDF/DOCX binary file upload direct extraction via PyPDF2 / pdfplumber.

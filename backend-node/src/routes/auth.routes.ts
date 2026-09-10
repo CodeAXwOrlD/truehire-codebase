@@ -1,17 +1,14 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
-import { hashPassword, verifyPassword, generateOtp, hashOtp, generateRefreshToken } from "../lib/password";
+import { hashPassword, verifyPassword, generateRefreshToken } from "../lib/password";
 import { signAccessToken } from "../lib/jwt";
-import { sendOtpEmail } from "../lib/mailer";
-import { sendOtpWhatsApp, normalizePhoneNumber } from "../lib/whatsapp";
 import { env } from "../config/env";
 import { requireAuth } from "../middleware/auth";
 import crypto from "node:crypto";
 
 export const authRouter = Router();
 
-const OTP_TTL_MS = 10 * 60 * 1000;
 const REFRESH_COOKIE_NAME = "th_refresh";
 
 const refreshCookieOptions = {
@@ -32,266 +29,52 @@ const signupSchema = z.object({
 authRouter.post("/signup", async (req, res, next) => {
   try {
     const { email, password, role } = signupSchema.parse(req.body);
+    const cleanEmail = email.toLowerCase().trim();
 
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const existing = await prisma.user.findUnique({ where: { email: cleanEmail } });
     if (existing) {
-      // Generic message — don't reveal whether the email is already registered.
-      return res.status(200).json({
-        data: { message: "If that email isn't already registered, a verification code has been sent." },
-        error: null,
+      return res.status(400).json({
+        data: null,
+        error: "An account with this email already exists. Please sign in.",
       });
     }
 
     const passwordHash = await hashPassword(password);
     const user = await prisma.user.create({
-      data: { email, passwordHash, role },
+      data: {
+        email: cleanEmail,
+        passwordHash,
+        role,
+        emailVerified: true,
+      },
     });
 
     if (role === "candidate") {
       await prisma.candidate.create({ data: { userId: user.id } });
     }
 
-    const { code, codeHash } = generateOtp();
-    await prisma.otpCode.create({
+    // Direct Login on Signup
+    const accessToken = signAccessToken({ sub: user.id, role: user.role });
+    const { token: refreshToken, tokenHash } = generateRefreshToken();
+
+    await prisma.refreshToken.create({
       data: {
         userId: user.id,
-        codeHash,
-        purpose: "verify_email",
-        expiresAt: new Date(Date.now() + OTP_TTL_MS),
+        tokenHash,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     });
-    await sendOtpEmail(email, code, "verify_email");
+
+    res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions);
 
     return res.status(201).json({
-      data: { message: "Account created. Check your email for a verification code." },
-      error: null,
-    });
-  } catch (err) {
-    return next(err);
-  }
-});
-
-// ---------- WhatsApp Send OTP (1-Click Login / Register) ----------
-const sendWhatsAppOtpSchema = z.object({
-  phone: z.string().min(8, "Valid phone number required"),
-  role: z.enum(["candidate", "recruiter"]).optional().default("candidate"),
-});
-
-authRouter.post("/whatsapp/send-otp", async (req, res, next) => {
-  try {
-    const { phone, role } = sendWhatsAppOtpSchema.parse(req.body);
-    const normalized = normalizePhoneNumber(phone);
-    const virtualEmail = `${normalized}@whatsapp.truehire.dev`;
-
-    let user = await prisma.user.findUnique({ where: { email: virtualEmail } });
-    if (!user) {
-      // Auto-provision user account for WhatsApp passwordless authentication
-      const placeholderPassword = crypto.randomBytes(24).toString("hex");
-      const passwordHash = await hashPassword(placeholderPassword);
-      user = await prisma.user.create({
-        data: {
-          email: virtualEmail,
-          passwordHash,
-          role,
-          emailVerified: false,
-        },
-      });
-
-      if (role === "candidate") {
-        await prisma.candidate.create({ data: { userId: user.id } });
-      }
-    }
-
-    const { code, codeHash } = generateOtp();
-    await prisma.otpCode.create({
-      data: {
-        userId: user.id,
-        codeHash,
-        purpose: "verify_email",
-        expiresAt: new Date(Date.now() + OTP_TTL_MS),
-      },
-    });
-
-    await sendOtpWhatsApp({ toPhone: normalized, code, purpose: "login_otp" });
-
-    return res.json({
-      data: {
-        message: `Verification code sent to WhatsApp (+${normalized}).`,
-        phone: normalized,
-      },
-      error: null,
-    });
-  } catch (err) {
-    return next(err);
-  }
-});
-
-// ---------- WhatsApp Verify OTP & Auto-Login ----------
-const verifyWhatsAppOtpSchema = z.object({
-  phone: z.string().min(8),
-  code: z.string().length(6),
-});
-
-authRouter.post("/whatsapp/verify-otp", async (req, res, next) => {
-  try {
-    const { phone, code } = verifyWhatsAppOtpSchema.parse(req.body);
-    const normalized = normalizePhoneNumber(phone);
-    const virtualEmail = `${normalized}@whatsapp.truehire.dev`;
-
-    const user = await prisma.user.findUnique({ where: { email: virtualEmail } });
-    if (!user) {
-      return res.status(400).json({ data: null, error: "Invalid phone number or expired session" });
-    }
-
-    const codeHash = hashOtp(code);
-    const otp = await prisma.otpCode.findFirst({
-      where: { userId: user.id, consumed: false, codeHash },
-      orderBy: { createdAt: "desc" },
-    });
-
-    if (!otp || otp.expiresAt < new Date()) {
-      return res.status(400).json({ data: null, error: "Invalid or expired 6-digit code" });
-    }
-
-    await prisma.$transaction([
-      prisma.otpCode.update({ where: { id: otp.id }, data: { consumed: true } }),
-      prisma.user.update({ where: { id: user.id }, data: { emailVerified: true } }),
-    ]);
-
-    // Issue JWT session
-    const accessToken = signAccessToken({ sub: user.id, role: user.role });
-    const { token: refreshToken, tokenHash } = generateRefreshToken();
-
-    await prisma.refreshToken.create({
-      data: {
-        userId: user.id,
-        tokenHash,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    });
-
-    res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions);
-
-    return res.json({
       data: {
         accessToken,
         user: { id: user.id, email: user.email, role: user.role },
-        message: "Successfully verified and authenticated!",
+        message: "Account created and authenticated successfully!",
       },
       error: null,
     });
-  } catch (err) {
-    return next(err);
-  }
-});
-
-// ---------- Universal Verify (Email & WhatsApp) ----------
-const verifySchema = z.object({
-  email: z.string().optional(),
-  phone: z.string().optional(),
-  identifier: z.string().optional(),
-  code: z.string().length(6),
-});
-
-authRouter.post("/verify", async (req, res, next) => {
-  try {
-    const body = verifySchema.parse(req.body);
-    const targetEmail =
-      body.email ||
-      (body.phone ? `${normalizePhoneNumber(body.phone)}@whatsapp.truehire.dev` : "") ||
-      (body.identifier?.includes("@") ? body.identifier : body.identifier ? `${normalizePhoneNumber(body.identifier)}@whatsapp.truehire.dev` : "");
-
-    if (!targetEmail) {
-      return res.status(400).json({ data: null, error: "Email or phone identifier is required" });
-    }
-
-    const user = await prisma.user.findUnique({ where: { email: targetEmail } });
-    if (!user) return res.status(400).json({ data: null, error: "Invalid code or user not found" });
-
-    const codeHash = hashOtp(body.code);
-    const otp = await prisma.otpCode.findFirst({
-      where: { userId: user.id, consumed: false, codeHash },
-      orderBy: { createdAt: "desc" },
-    });
-
-    if (!otp || otp.expiresAt < new Date()) {
-      return res.status(400).json({ data: null, error: "Invalid or expired 6-digit code" });
-    }
-
-    await prisma.$transaction([
-      prisma.otpCode.update({ where: { id: otp.id }, data: { consumed: true } }),
-      prisma.user.update({ where: { id: user.id }, data: { emailVerified: true } }),
-    ]);
-
-    // Issue JWT session automatically on verification for instant login UX
-    const accessToken = signAccessToken({ sub: user.id, role: user.role });
-    const { token: refreshToken, tokenHash } = generateRefreshToken();
-
-    await prisma.refreshToken.create({
-      data: {
-        userId: user.id,
-        tokenHash,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    });
-
-    res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions);
-
-    return res.json({
-      data: {
-        accessToken,
-        user: { id: user.id, email: user.email, role: user.role },
-        message: "Identity verified successfully!",
-      },
-      error: null,
-    });
-  } catch (err) {
-    return next(err);
-  }
-});
-
-authRouter.post("/verify-email", async (req, res, next) => {
-  // Alias to /verify
-  return (authRouter as any).handle(Object.assign(req, { url: "/verify" }), res, next);
-});
-
-// ---------- Resend OTP ----------
-authRouter.post("/resend-otp", async (req, res, next) => {
-  try {
-    const { email, phone, identifier } = req.body;
-    const target = email || phone || identifier;
-    if (!target) {
-      return res.status(400).json({ data: null, error: "Email or phone is required" });
-    }
-
-    const isEmail = target.includes("@") && !target.endsWith("@whatsapp.truehire.dev");
-    const targetEmail = isEmail
-      ? target.toLowerCase().trim()
-      : `${normalizePhoneNumber(target)}@whatsapp.truehire.dev`;
-
-    const user = await prisma.user.findUnique({ where: { email: targetEmail } });
-    if (!user) {
-      return res.json({ data: { message: "If that account exists, a new code has been sent." }, error: null });
-    }
-
-    const { code, codeHash } = generateOtp();
-    await prisma.otpCode.create({
-      data: {
-        userId: user.id,
-        codeHash,
-        purpose: "verify_email",
-        expiresAt: new Date(Date.now() + OTP_TTL_MS),
-      },
-    });
-
-    if (isEmail) {
-      await sendOtpEmail(user.email, code, "verify_email");
-    } else {
-      const cleanPhone = normalizePhoneNumber(target);
-      await sendOtpWhatsApp({ toPhone: cleanPhone, code, purpose: "login_otp" });
-    }
-
-    return res.json({ data: { message: "New verification code sent successfully." }, error: null });
   } catch (err) {
     return next(err);
   }
@@ -306,19 +89,15 @@ const loginSchema = z.object({
 authRouter.post("/login", async (req, res, next) => {
   try {
     const { email, password } = loginSchema.parse(req.body);
-    const user = await prisma.user.findUnique({ where: { email } });
+    const cleanEmail = email.toLowerCase().trim();
 
-    // Same generic error whether the email doesn't exist or the password is wrong —
-    // prevents attackers from enumerating valid accounts.
+    const user = await prisma.user.findUnique({ where: { email: cleanEmail } });
     const genericError = { data: null, error: "Invalid email or password" };
+
     if (!user) return res.status(401).json(genericError);
 
     const validPassword = await verifyPassword(password, user.passwordHash);
     if (!validPassword) return res.status(401).json(genericError);
-
-    if (!user.emailVerified) {
-      return res.status(403).json({ data: null, error: "Please verify your email before logging in" });
-    }
 
     const accessToken = signAccessToken({ sub: user.id, role: user.role });
     const { token: refreshToken, tokenHash } = generateRefreshToken();
@@ -332,8 +111,13 @@ authRouter.post("/login", async (req, res, next) => {
     });
 
     res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions);
+
     return res.json({
-      data: { accessToken, user: { id: user.id, email: user.email, role: user.role } },
+      data: {
+        accessToken,
+        user: { id: user.id, email: user.email, role: user.role },
+        message: "Login successful!",
+      },
       error: null,
     });
   } catch (err) {
@@ -380,7 +164,7 @@ authRouter.post("/refresh", async (req, res, next) => {
   }
 });
 
-// ---------- Current user (used by frontend to bootstrap session state) ----------
+// ---------- Current user ----------
 authRouter.get("/me", requireAuth, async (req, res, next) => {
   try {
     const user = await prisma.user.findUnique({ where: { id: req.user!.sub } });

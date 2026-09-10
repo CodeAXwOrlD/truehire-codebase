@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { BackgroundGrid } from "@/components/ui/BackgroundGrid";
 import { CustomCursor } from "@/components/ui/CustomCursor";
+import { AuthProvider } from "@/lib/context/AuthContext";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -27,9 +28,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <body className="font-sans">
-        <BackgroundGrid />
-        <CustomCursor />
-        {children}
+        <AuthProvider>
+          <BackgroundGrid />
+          <CustomCursor />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
