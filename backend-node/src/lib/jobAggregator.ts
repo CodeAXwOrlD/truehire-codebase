@@ -351,7 +351,7 @@ class JobAggregatorService {
           applyUrl: item.url || "https://remoteok.com",
           postedAt: item.date || new Date().toISOString(),
           postedAtTs: item.date ? new Date(item.date).getTime() : Date.now(),
-          description: (item.description || "Exciting remote engineering opportunity.").slice(0, 800),
+          description: item.description || "Exciting remote engineering opportunity.",
           ghostScore: ghost,
         });
       }
@@ -391,7 +391,7 @@ class JobAggregatorService {
           applyUrl: item.url,
           postedAt,
           postedAtTs: new Date(postedAt).getTime(),
-          description: (item.description || "Great role at a growing company.").slice(0, 800),
+          description: item.description || "Great role at a growing company.",
           ghostScore: {
             score: days < 7 ? 8 : days < 14 ? 15 : 25,
             riskLevel: "low",
@@ -447,7 +447,7 @@ class JobAggregatorService {
           applyUrl: item.url || `https://himalayas.app/jobs/${item.slug}`,
           postedAt,
           postedAtTs: new Date(postedAt).getTime(),
-          description: (item.description || item.summary || "Quality remote role from Himalayas.").slice(0, 800),
+          description: item.description || item.summary || "Quality remote role from Himalayas.",
           ghostScore: {
             score: days < 7 ? 9 : days < 21 ? 18 : 28,
             riskLevel: "low",
@@ -499,7 +499,7 @@ class JobAggregatorService {
           applyUrl: item.url || "https://remotive.com",
           postedAt,
           postedAtTs: new Date(postedAt).getTime(),
-          description: (item.description || "Quality remote opportunity.").replace(/<[^>]*>/g, "").slice(0, 800),
+          description: item.description || "Quality remote opportunity.",
           ghostScore: {
             score: days < 7 ? 10 : days < 21 ? 20 : 30,
             riskLevel: days > 30 ? "medium" : "low",
@@ -552,7 +552,7 @@ class JobAggregatorService {
           applyUrl: item.url || "https://jobicy.com",
           postedAt,
           postedAtTs: new Date(postedAt).getTime(),
-          description: (item.jobDescription || "Remote engineering role.").replace(/<[^>]*>/g, "").slice(0, 800),
+          description: item.jobDescription || "Remote engineering role.",
           ghostScore: {
             score: days < 7 ? 11 : days < 21 ? 19 : 29,
             riskLevel: "low",
@@ -607,7 +607,7 @@ class JobAggregatorService {
           applyUrl: item.refs?.landing_page || "https://www.themuse.com/jobs",
           postedAt,
           postedAtTs: new Date(postedAt).getTime(),
-          description: (item.contents || "Quality engineering role at a vetted company.").replace(/<[^>]*>/g, "").slice(0, 800),
+          description: item.contents || "Quality engineering role at a vetted company.",
           ghostScore: {
             score: days < 7 ? 12 : days < 21 ? 22 : 32,
             riskLevel: "low",
@@ -661,7 +661,7 @@ class JobAggregatorService {
           applyUrl: item.url || "https://findwork.dev",
           postedAt,
           postedAtTs: new Date(postedAt).getTime(),
-          description: (item.text || "Tech-forward role from FindWork.").slice(0, 800),
+          description: item.text || "Tech-forward role from FindWork.",
           ghostScore: {
             score: 14,
             riskLevel: "low",
@@ -737,7 +737,7 @@ class JobAggregatorService {
           applyUrl: item.job_apply_link || item.job_google_link || "https://jsearch.p.rapidapi.com",
           postedAt,
           postedAtTs: new Date(postedAt).getTime(),
-          description: (item.job_description || "").slice(0, 800),
+          description: item.job_description || "",
           ghostScore: {
             score: days < 7 ? 10 : days < 14 ? 18 : days < 30 ? 28 : 45,
             riskLevel: days > 30 ? "medium" : "low",

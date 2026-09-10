@@ -136,12 +136,68 @@ def extract_text_from_docx_bytes(content: bytes) -> str:
         return ""
 
 
+def extract_experience_info(text: str) -> tuple[int, int, str]:
+    """
+    Carefully parse work experience from resume text:
+    - Searches for explicit work experience statements (e.g. 'X years of experience', 'X yrs exp')
+    - Searches for months of internship/work (e.g. '3 month internship', '1 month at...', '3 months intern')
+    - Ignores academic degrees ('3rd year student', '4-year B.Tech')
+    - Returns (years: int, total_months: int, label: str)
+    - Defaults to 0 (Entry level) if no explicit years of experience are found! Never defaults to 3!
+    """
+    # 1. Search for explicit work experience patterns with years
+    explicit_year_patterns = [
+        r"(?:experience|exp|worked|working)\s*(?:for|of|:)?\s*(\d+)\+?\s*(?:years?|yrs?)",
+        r"(\d+)\+?\s*(?:years?|yrs?)\s*(?:of)?\s*(?:relevant\s+)?(?:experience|exp|in software|as a|professional)",
+        r"(?:total\s+)?experience\s*[:\-]?\s*(\d+)\+?\s*(?:years?|yrs?)",
+    ]
+    
+    found_years = []
+    for pat in explicit_year_patterns:
+        matches = re.findall(pat, text, re.IGNORECASE)
+        for m in matches:
+            val = int(m)
+            if 0 < val < 45:
+                found_years.append(val)
+
+    # 2. Search for explicit months (e.g. "3 months internship", "1 month job", "3 mos intern")
+    found_months = []
+    month_matches = re.findall(r"\b(\d+)\s*(?:months?|mos?)\b", text, re.IGNORECASE)
+    for m in month_matches:
+        val = int(m)
+        if 0 < val < 48:
+            found_months.append(val)
+
+    # 3. Check for intern / fresher / early career indicators
+    is_fresher_or_intern = bool(
+        re.search(r"\b(intern|internship|fresher|trainee|apprentice|student|graduate trainee)\b", text, re.IGNORECASE)
+    )
+
+    total_months = sum(found_months) if found_months else 0
+
+    if found_years:
+        years = max(found_years)
+        label = f"{years}+ years"
+    elif total_months > 0:
+        # e.g. 3 months internship + 1 month job = 4 months
+        years = 1 if total_months >= 12 else 0
+        label = f"{total_months} months (Entry / Early Career)"
+    elif is_fresher_or_intern:
+        years = 0
+        label = "Entry Level / Intern (< 1 yr)"
+    else:
+        # Default to 0 (Entry Level), never hardcode 3!
+        years = 0
+        label = "Entry Level (< 1 yr)"
+
+    return years, total_months, label
+
+
 @router.post("/extract-resume")
 def extract_resume_from_file(data: ParseResumeB64Input):
     """
     Accepts a base64-encoded PDF or DOCX file, extracts text,
-    then runs NLP skill extraction. Used by Node.js backend to
-    process resume uploads without any scanning delay.
+    then runs NLP skill extraction and accurate experience detection.
     """
     try:
         content = base64.b64decode(data.content_b64)
@@ -167,9 +223,16 @@ def extract_resume_from_file(data: ParseResumeB64Input):
         }, status_code=422)
 
     skills = extract_skills_from_text(text)
-    exp_matches = re.findall(r"(\d+)\+?\s*(?:years|yrs)", text, re.IGNORECASE)
-    years = max([int(y) for y in exp_matches if int(y) < 40], default=3)
+    years, total_months, exp_label = extract_experience_info(text)
     roles = detect_roles(text)
+
+    if years == 0:
+        if total_months > 0:
+            summary = f"Extracted {len(skills)} technical skills with {total_months} month(s) of experience/internship ({exp_label})."
+        else:
+            summary = f"Extracted {len(skills)} technical skills for Early Career / Entry level."
+    else:
+        summary = f"Extracted {len(skills)} technical skills across {years}+ year(s) of software development."
 
     return JSONResponse({
         "data": {
@@ -177,7 +240,7 @@ def extract_resume_from_file(data: ParseResumeB64Input):
             "experience_years": years,
             "detected_roles": roles,
             "raw_text_length": len(text),
-            "summary": f"Extracted {len(skills)} technical skills and {years}+ years of experience from your resume.",
+            "summary": summary,
         },
         "error": None,
     })
@@ -185,21 +248,29 @@ def extract_resume_from_file(data: ParseResumeB64Input):
 
 @router.post("/parse-resume")
 def parse_resume(data: ParseResumeInput):
-    """Parse raw resume text (existing endpoint, unchanged behaviour)."""
+    """Parse raw resume text with accurate experience detection."""
     skills = extract_skills_from_text(data.resume_text)
-    exp_matches = re.findall(r"(\d+)\+?\s*(?:years|yrs)", data.resume_text, re.IGNORECASE)
-    years = max([int(y) for y in exp_matches if int(y) < 40], default=3)
+    years, total_months, exp_label = extract_experience_info(data.resume_text)
     roles = detect_roles(data.resume_text)
+
+    if years == 0:
+        if total_months > 0:
+            summary = f"Extracted {len(skills)} technical skills with {total_months} month(s) of experience/internship ({exp_label})."
+        else:
+            summary = f"Extracted {len(skills)} technical skills for Early Career / Entry level."
+    else:
+        summary = f"Extracted {len(skills)} technical skills across {years}+ year(s) of software development."
 
     return JSONResponse({
         "data": {
             "skills": skills,
             "experience_years": years,
             "detected_roles": roles,
-            "summary": f"Detected {len(skills)} tech skills across {years}+ years of software development.",
+            "summary": summary,
         },
         "error": None,
     })
+
 
 
 @router.post("/calculate")

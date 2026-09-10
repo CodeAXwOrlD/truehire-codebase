@@ -33,11 +33,11 @@ export function ResumeReviewModal({
 
   // Infer experience level
   const defaultExpLevel: ExperienceLevel =
-    parseResult.experienceYears <= 2
+    parseResult.experienceYears <= 1
       ? "entry"
-      : parseResult.experienceYears <= 5
+      : parseResult.experienceYears <= 4
       ? "mid"
-      : parseResult.experienceYears <= 8
+      : parseResult.experienceYears <= 7
       ? "senior"
       : "lead";
 
@@ -99,7 +99,7 @@ export function ResumeReviewModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
@@ -107,7 +107,7 @@ export function ResumeReviewModal({
         aria-modal="true"
         aria-labelledby="resume-review-title"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl border border-zinc-700/80 bg-[#121217] shadow-2xl overflow-hidden"
+        className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl border border-zinc-700/80 bg-[#121217] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-zinc-800/80 px-6 py-4 bg-zinc-900/60">
@@ -179,7 +179,11 @@ export function ResumeReviewModal({
                 2. Experience Level
               </label>
               <span className="text-xs font-mono text-teal font-medium bg-teal/10 px-2 py-0.5 rounded border border-teal/30">
-                Detected: {parseResult.experienceYears}+ years
+                {parseResult.experienceYears === 0
+                  ? "Detected: Entry Level / Intern (< 1 yr)"
+                  : parseResult.experienceYears === 1
+                  ? "Detected: 1 year"
+                  : `Detected: ${parseResult.experienceYears}+ years`}
               </span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { VerifiedBeaconWordmark } from "@/components/brand/VerifiedBeacon";
 import { JobCard } from "@/components/jobs/JobCard";
+import { JobDetailsModal } from "@/components/jobs/JobDetailsModal";
 import { GhostScoreExplainModal } from "@/components/jobs/GhostScoreExplainModal";
 import { MatchScoreModal } from "@/components/jobs/MatchScoreModal";
 import { ProfileModal } from "@/components/candidate/ProfileModal";
@@ -89,50 +90,6 @@ function timeAgo(isoString: string): string {
   return `${Math.floor(days / 30)}mo ago`;
 }
 
-function renderFormattedDescription(desc: string) {
-  const lines = desc.split("\n");
-  return lines.map((line, idx) => {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      return <div key={idx} className="h-3" />;
-    }
-    // Section headers like "About Linear:", "Key Responsibilities:", etc.
-    if (
-      /^(about|responsibilities|key responsibilities|what you'?ll do|what we'?re looking for|requirements|required qualifications|qualifications|compensation|benefits|compensation & benefits|overview|perks)/i.test(
-        trimmed
-      ) &&
-      trimmed.endsWith(":")
-    ) {
-      return (
-        <h4
-          key={idx}
-          className="mt-6 mb-2.5 text-xs font-bold uppercase tracking-wider text-teal flex items-center gap-1.5"
-        >
-          <span className="h-1.5 w-1.5 rounded-full bg-teal" />
-          {trimmed.slice(0, -1)}
-        </h4>
-      );
-    }
-    // Bullet points starting with •, -, *
-    if (trimmed.startsWith("•") || trimmed.startsWith("-") || trimmed.startsWith("*")) {
-      const content = trimmed.replace(/^[•\-\*]\s*/, "");
-      return (
-        <li
-          key={idx}
-          className="ml-4 list-disc text-sm text-zinc-300 leading-relaxed pl-1 marker:text-teal"
-        >
-          {content}
-        </li>
-      );
-    }
-    // Standard paragraph
-    return (
-      <p key={idx} className="text-sm text-zinc-300 leading-relaxed mb-2">
-        {trimmed}
-      </p>
-    );
-  });
-}
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 
@@ -162,7 +119,7 @@ export default function CandidateJobsPage() {
   const [profile, setProfile] = useState<CandidateProfile>({
     userId: "local",
     skills: ["React", "Next.js", "TypeScript", "Node.js", "PostgreSQL"],
-    experienceYears: 3,
+    experienceYears: 0,
     resumeText: "",
     targetRole: "Software Engineer",
   });
@@ -771,8 +728,21 @@ export default function CandidateJobsPage() {
         </div>
       </main>
 
-      {/* ── Modals ───────────────────────────────────────────────────────────── */}
+      {/* ── Executive Centered Job Details Modal ───────────────────────── */}
+      <JobDetailsModal
+        job={selectedJob}
+        open={Boolean(selectedJob)}
+        onClose={() => setSelectedJob(null)}
+        matchScore={selectedJob ? matchScores[selectedJob.id] : undefined}
+        onExplainGhostScore={(j) => setExplainJob(j)}
+        onExplainMatchScore={handleExplainMatch}
+        onSelectTag={(tag) => {
+          setSearch(tag);
+          setDebouncedSearch(tag);
+        }}
+      />
 
+      {/* ── Secondary Overlay Modals (Stacked above JobDetailsModal at z-[100]) ── */}
       <GhostScoreExplainModal
         job={explainJob}
         open={Boolean(explainJob)}
@@ -802,239 +772,6 @@ export default function CandidateJobsPage() {
         onClose={() => setReviewModalOpen(false)}
         onApplyPreferences={handleApplyResumePreferences}
       />
-
-      {/* ── Full Job Specification Drawer ─────────────────────────────────── */}
-      {selectedJob && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-end bg-black/75 backdrop-blur-sm p-4 sm:p-6"
-          onClick={() => setSelectedJob(null)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="job-drawer-title"
-            onClick={(e) => e.stopPropagation()}
-            className="flex h-full w-full max-w-3xl flex-col rounded-2xl border border-zinc-700/80 bg-[#121217] shadow-2xl overflow-hidden"
-          >
-            {/* Drawer Header */}
-            <div className="flex items-start justify-between border-b border-zinc-800/80 px-6 py-5 bg-zinc-900/60 gap-4">
-              <div className="flex items-start gap-4">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-zinc-700 bg-zinc-800 text-lg font-bold font-mono text-white shadow-md">
-                  {selectedJob.companyLogo ? (
-                    <img
-                      src={selectedJob.companyLogo}
-                      alt={selectedJob.company}
-                      className="h-full w-full rounded-2xl object-contain p-1"
-                      onError={(e) => ((e.target as HTMLImageElement).style.display = "none")}
-                    />
-                  ) : (
-                    selectedJob.company.slice(0, 2).toUpperCase()
-                  )}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold font-mono text-teal uppercase tracking-wider">
-                      {selectedJob.company}
-                    </span>
-                    <span className="text-xs text-zinc-500">·</span>
-                    <span className="rounded-md border border-zinc-800 bg-zinc-900 px-2 py-0.5 text-[11px] font-semibold text-zinc-300">
-                      via {selectedJob.source}
-                    </span>
-                  </div>
-                  <h2
-                    id="job-drawer-title"
-                    className="text-xl md:text-2xl font-bold text-white tracking-tight leading-snug mt-1"
-                  >
-                    {selectedJob.title}
-                  </h2>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-zinc-400 font-medium">
-                    <span>📍 {selectedJob.location}</span>
-                    <span>·</span>
-                    <span>🕒 {timeAgo(selectedJob.postedAt)}</span>
-                    {selectedJob.experienceLevel !== "any" && (
-                      <>
-                        <span>·</span>
-                        <span className="capitalize">🎓 {selectedJob.experienceLevel} Level</span>
-                      </>
-                    )}
-                    {selectedJob.jobType !== "any" && (
-                      <>
-                        <span>·</span>
-                        <span className="capitalize">💼 {selectedJob.jobType}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setSelectedJob(null)}
-                  className="rounded-xl p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors shrink-0"
-                  aria-label="Close job details"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-            </div>
-
-            {/* Scrollable Body */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* Highlights 4-Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {/* Compensation */}
-                <div className="flex flex-col rounded-xl border border-zinc-800/80 bg-zinc-900/50 p-3.5">
-                  <span className="text-[11px] font-semibold uppercase text-zinc-400">Compensation</span>
-                  <span className="mt-1 font-mono text-sm font-bold text-emerald-400">
-                    {selectedJob.salaryFormatted || "Competitive"}
-                  </span>
-                  <span className="text-[10px] text-zinc-500 mt-0.5">Estimated Base</span>
-                </div>
-
-                {/* Anti-Ghost Status */}
-                <div className="flex flex-col rounded-xl border border-zinc-800/80 bg-zinc-900/50 p-3.5">
-                  <span className="text-[11px] font-semibold uppercase text-zinc-400">Ghost Risk</span>
-                  <span
-                    className={`mt-1 font-mono text-sm font-bold ${
-                      selectedJob.ghostScore.riskLevel === "low"
-                        ? "text-teal"
-                        : selectedJob.ghostScore.riskLevel === "medium"
-                        ? "text-amber"
-                        : "text-red"
-                    }`}
-                  >
-                    {selectedJob.ghostScore.score}/100 ({selectedJob.ghostScore.riskLevel.toUpperCase()})
-                  </span>
-                  <span className="text-[10px] text-zinc-500 mt-0.5">Anti-Ghost Health</span>
-                </div>
-
-                {/* Compatibility */}
-                <div className="flex flex-col rounded-xl border border-zinc-800/80 bg-zinc-900/50 p-3.5">
-                  <span className="text-[11px] font-semibold uppercase text-zinc-400">AI Compatibility</span>
-                  <span className="mt-1 font-mono text-sm font-bold text-teal flex items-center gap-1">
-                    <Sparkles size={13} />
-                    {matchScores[selectedJob.id] !== undefined
-                      ? `${matchScores[selectedJob.id]}%`
-                      : "Ready"}
-                  </span>
-                  <span className="text-[10px] text-zinc-500 mt-0.5">Profile Match</span>
-                </div>
-
-                {/* Work Type */}
-                <div className="flex flex-col rounded-xl border border-zinc-800/80 bg-zinc-900/50 p-3.5">
-                  <span className="text-[11px] font-semibold uppercase text-zinc-400">Workplace</span>
-                  <span className="mt-1 font-medium text-sm text-white flex items-center gap-1">
-                    {selectedJob.isRemote ? "🌍 Remote" : "🏢 On-site"}
-                  </span>
-                  <span className="text-[10px] text-zinc-500 mt-0.5">{selectedJob.location}</span>
-                </div>
-              </div>
-
-              {/* Anti-Ghost Verification Banner */}
-              <div
-                className={`rounded-xl border p-4 ${
-                  selectedJob.ghostScore.riskLevel === "low"
-                    ? "border-teal/30 bg-teal/5"
-                    : selectedJob.ghostScore.riskLevel === "medium"
-                    ? "border-amber/30 bg-amber/5"
-                    : "border-red/30 bg-red/5"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck
-                      size={16}
-                      className={
-                        selectedJob.ghostScore.riskLevel === "low"
-                          ? "text-teal"
-                          : selectedJob.ghostScore.riskLevel === "medium"
-                          ? "text-amber"
-                          : "text-red"
-                      }
-                    />
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-white">
-                      TrueHire Anti-Ghost Signal Breakdown
-                    </h3>
-                  </div>
-                  <button
-                    onClick={() => setExplainJob(selectedJob)}
-                    className="text-xs text-teal font-semibold hover:underline"
-                  >
-                    View Diagnosis &rarr;
-                  </button>
-                </div>
-                <ul className="space-y-1 text-xs text-zinc-300">
-                  {selectedJob.ghostScore.reasons.map((r, idx) => (
-                    <li key={idx} className="flex items-center gap-2">
-                      <span className="text-teal font-bold">•</span>
-                      <span>{r}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Technologies & Tech Stack Tags */}
-              {selectedJob.tags.length > 0 && (
-                <div>
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2.5">
-                    Required Competencies &amp; Tech Stack
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedJob.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-lg border border-zinc-800 bg-zinc-900/90 px-3 py-1.5 text-xs font-mono font-medium text-zinc-200"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Full Formatted Description */}
-              <div>
-                <h3 className="text-base font-bold text-white mb-3 border-b border-zinc-800 pb-2">
-                  Complete Job Specification
-                </h3>
-                <div className="space-y-2 text-zinc-300">
-                  {renderFormattedDescription(selectedJob.description)}
-                </div>
-              </div>
-            </div>
-
-            {/* Sticky Action Footer */}
-            <div className="flex items-center justify-between border-t border-zinc-800/80 px-6 py-4 bg-zinc-900/80 backdrop-blur-md gap-4">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => handleExplainMatch(selectedJob)}
-                  className="flex items-center gap-1.5 rounded-lg border border-teal/40 bg-teal/10 px-3.5 py-2 text-xs font-bold text-teal hover:bg-teal/20 transition-colors"
-                >
-                  <Sparkles size={13} />
-                  Match Breakdown
-                </button>
-                <button
-                  onClick={() => setExplainJob(selectedJob)}
-                  className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-3.5 py-2 text-xs font-medium text-zinc-300 hover:text-white hover:border-zinc-700 transition-colors"
-                >
-                  <ShieldCheck size={13} />
-                  Ghost Risk
-                </button>
-              </div>
-
-              <a
-                href={selectedJob.applyUrl}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="flex items-center gap-2 rounded-xl bg-teal px-6 py-2.5 text-xs font-bold text-black hover:bg-teal/90 shadow-lg shadow-teal/20 transition-all"
-              >
-                <span>Apply on {selectedJob.source}</span>
-                <ExternalLink size={14} />
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

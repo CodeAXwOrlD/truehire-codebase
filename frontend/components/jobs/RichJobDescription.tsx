@@ -11,33 +11,61 @@ interface RichJobDescriptionProps {
 // Regex to check if content contains HTML tags like <p>, <br>, <div>, <ul>, etc.
 const HTML_TAG_REGEX = /<[a-z][\s\S]*>/i;
 
+function decodeHtmlEntities(str: string): string {
+  if (!str) return "";
+  if (
+    !str.includes("&lt;") &&
+    !str.includes("&gt;") &&
+    !str.includes("&amp;") &&
+    !str.includes("&quot;") &&
+    !str.includes("&#39;") &&
+    !str.includes("&#x")
+  ) {
+    return str;
+  }
+  return str
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&");
+}
+
 export function RichJobDescription({ content, className = "" }: RichJobDescriptionProps) {
-  const isHtml = useMemo(() => {
-    return HTML_TAG_REGEX.test(content);
+  // First decode any entity-encoded strings (e.g. &lt;p&gt;)
+  const normalizedContent = useMemo(() => {
+    return decodeHtmlEntities(content || "");
   }, [content]);
+
+  const isHtml = useMemo(() => {
+    return HTML_TAG_REGEX.test(normalizedContent);
+  }, [normalizedContent]);
 
   // Clean and sanitize HTML content
   const cleanHtml = useMemo(() => {
     if (!isHtml) return "";
     if (typeof window === "undefined") {
-      // Server-side fallback: strip tags for initial render to avoid hydrations mismatch
-      return content.replace(/<[^>]*>?/gm, " ");
+      // Server-side fallback: strip tags for initial render to avoid hydration mismatch
+      return normalizedContent.replace(/<[^>]*>?/gm, " ");
     }
 
     // Configure DOMPurify hooks once or sanitize
-    const sanitized = DOMPurify.sanitize(content, {
+    const sanitized = DOMPurify.sanitize(normalizedContent, {
       USE_PROFILES: { html: true },
       ADD_ATTR: ["target", "rel"],
     });
 
     return sanitized;
-  }, [content, isHtml]);
+  }, [normalizedContent, isHtml]);
 
   // Formatted plain text renderer if no HTML tags were present
   const renderPlainText = useMemo(() => {
     if (isHtml) return null;
 
-    const lines = content.split("\n");
+    const lines = normalizedContent.split("\n");
     return lines.map((line, idx) => {
       const trimmed = line.trim();
       if (!trimmed) {
@@ -82,7 +110,7 @@ export function RichJobDescription({ content, className = "" }: RichJobDescripti
         </p>
       );
     });
-  }, [content, isHtml]);
+  }, [normalizedContent, isHtml]);
 
   if (isHtml) {
     return (

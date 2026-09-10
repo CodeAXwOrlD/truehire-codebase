@@ -42,7 +42,7 @@ candidateRouter.get("/profile", (req, res) => {
   const profile = candidateProfiles.get(userId) || {
     userId,
     skills: ["React", "TypeScript", "Node.js", "PostgreSQL"],
-    experienceYears: 3,
+    experienceYears: 0,
     resumeText: "",
     targetRole: "Software Engineer",
   };
@@ -66,7 +66,7 @@ candidateRouter.post("/profile", async (req, res) => {
   const { resumeText, skills, experienceYears, targetRole } = req.body;
 
   let finalSkills = skills || [];
-  let finalExp = experienceYears || 3;
+  let finalExp = typeof experienceYears === "number" ? experienceYears : 0;
 
   if (resumeText) {
     const parseRes = await callScoringService<{
