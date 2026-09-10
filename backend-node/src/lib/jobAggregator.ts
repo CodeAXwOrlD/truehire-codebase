@@ -781,9 +781,10 @@ class JobAggregatorService {
           recommendations: ["High hiring intent verified by TrueHire. Recommended to apply!"],
         },
       },
+
       {
-        id: "linkedin-linear-frontend-2026",
-        title: "Staff Frontend Engineer (Core App)",
+        id: "linkedin-linear-staff-frontend-2026",
+        title: "Staff Frontend Engineer (Core Application)",
         company: "Linear",
         companyLogo: "https://logo.clearbit.com/linear.app",
         location: "Remote (Global)",
@@ -792,7 +793,7 @@ class JobAggregatorService {
         salaryMax: 240000,
         salaryFormatted: "$190k – $240k",
         salaryCurrency: "USD",
-        tags: ["React", "TypeScript", "WebGL", "Performance"],
+        tags: ["React", "TypeScript", "WebGL", "Performance", "State Machines", "Next.js"],
         experienceLevel: "lead",
         jobType: "full-time",
         source: "LinkedIn",
@@ -800,7 +801,34 @@ class JobAggregatorService {
         applyUrl: "https://linear.app/careers",
         postedAt: new Date(Date.now() - 4 * 86400000).toISOString(),
         postedAtTs: Date.now() - 4 * 86400000,
-        description: "Build fast, sync-first desktop-class web applications for engineers worldwide. Own critical rendering performance, build offline-first sync, and define the quality bar for the entire frontend.",
+        description: `About Linear:
+Linear is building the system for modern software development. High-growth product companies worldwide — including OpenAI, Vercel, Ramp, Cash App, and Substack — rely on Linear daily to plan, build, and ship world-class software.
+
+We obsess over keyboard-first workflows, sub-50ms interaction latency, and fluid micro-animations that make software engineering feel like an artisanal craft again.
+
+About the Role:
+As a Staff Frontend Engineer on our Core Application team, you will shape the architecture of the primary Linear desktop and web clients. You will build offline-first synchronization primitives, optimize WebGL and Canvas graph renderers, and raise the bar for frontend quality across our entire engineering organization.
+
+Key Responsibilities:
+• Architect and implement critical frontend features using React, TypeScript, and modern browser standards.
+• Own real-time collaborative state management with client-side SQLite/IndexedDB caching and CRDT conflict resolution.
+• Drive 60fps rendering performance across deeply nested issue graphs, kanban boards, and project roadmaps.
+• Mentor senior frontend engineers and set standards for component design, a11y, and type safety.
+• Work directly with our design and product leads to invent novel, frictionless UI paradigms.
+
+What We're Looking For:
+• 6+ years of production experience building high-performance web applications in React and TypeScript.
+• Deep expertise with browser rendering lifecycles, memory profiling, and virtualized data structures.
+• Prior experience with offline-first architectures, optimistic mutations, or local-first sync engines.
+• Uncompromising eye for UI polish, typography, keyboard shortcuts, and micro-interactions.
+• Self-directed builder who thrives with high autonomy and direct customer feedback.
+
+Compensation & Benefits:
+• Competitive base salary: $190,000 – $240,000 USD + generous early-stage equity.
+• Comprehensive medical, dental, and vision insurance for you and your dependents (100% company covered).
+• Remote-first culture with annual worldwide team offsites (past offsites in Portugal, Iceland, Japan).
+• Home office setup stipend ($3,000) + latest M-series MacBook Pro.
+• Unlimited PTO with mandatory minimum vacation policies.`,
         ghostScore: {
           score: 14,
           riskLevel: "low",
@@ -819,7 +847,7 @@ class JobAggregatorService {
         salaryMax: 280000,
         salaryFormatted: "$200k – $280k",
         salaryCurrency: "USD",
-        tags: ["Python", "FastAPI", "Kubernetes", "LLM", "Distributed Systems"],
+        tags: ["Python", "FastAPI", "Kubernetes", "LLM", "Distributed Systems", "Go", "PostgreSQL"],
         experienceLevel: "senior",
         jobType: "full-time",
         source: "Himalayas",
@@ -827,7 +855,30 @@ class JobAggregatorService {
         applyUrl: "https://openai.com/careers",
         postedAt: new Date(Date.now() - 1 * 86400000).toISOString(),
         postedAtTs: Date.now() - 1 * 86400000,
-        description: "Scale the APIs powering GPT, DALL-E, and Sora at global scale. Design and implement high-throughput, low-latency microservices handling millions of daily inference requests.",
+        description: `About OpenAI:
+OpenAI is an AI research and deployment company. Our mission is to ensure that artificial general intelligence benefits all of humanity.
+
+About the Role:
+As a Senior Backend Engineer on the API Platform team, you will scale the backbone systems that deliver GPT-4, DALL-E, and Sora to millions of developers and enterprise partners worldwide. You will solve foundational distributed systems challenges around low-latency streaming, token rate-limiting, compute scheduling, and high-availability inference pipelines.
+
+Key Responsibilities:
+• Design, implement, and maintain low-latency gRPC and REST gateway services in Python (FastAPI) and Go.
+• Build distributed queuing, rate-limiting, and caching layers using Redis, Kafka, and Kubernetes.
+• Collaborate with ML infrastructure researchers to optimize token streaming and GPU cluster routing.
+• Scale mission-critical billing, usage tracking, and multi-tenant isolation subsystems.
+• Participate in on-call rotations and lead incident retrospectives to maintain 99.99% platform availability.
+
+Required Qualifications:
+• 5+ years of software engineering experience building and operating distributed backend systems at scale.
+• Strong command of Python, Go, or C++ with deep understanding of concurrency and asynchronous I/O.
+• Practical experience with Kubernetes, container orchestration, and multi-region cloud infrastructure (Azure / AWS).
+• Solid foundation in database design, schema migrations, and indexing strategies with PostgreSQL and Redis.
+
+Benefits & Compensation:
+• Annual base compensation: $200,000 – $280,000 USD + OpenAI profit participation units (PPU).
+• Top-tier health, dental, and vision coverage + wellness stipend.
+• 401(k) retirement plan with employer matching.
+• Flexible time off and generous parental leave.`,
         ghostScore: {
           score: 6,
           riskLevel: "low",
@@ -846,7 +897,7 @@ class JobAggregatorService {
         salaryMax: 170000,
         salaryFormatted: "$140k – $170k",
         salaryCurrency: "USD",
-        tags: ["Next.js", "TypeScript", "Edge Computing", "Cloudflare", "React"],
+        tags: ["Next.js", "TypeScript", "Edge Computing", "Cloudflare", "React", "Serverless"],
         experienceLevel: "mid",
         jobType: "full-time",
         source: "Remotive",
@@ -854,7 +905,29 @@ class JobAggregatorService {
         applyUrl: "https://vercel.com/careers",
         postedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
         postedAtTs: Date.now() - 3 * 86400000,
-        description: "Educate and excite the developer community about Vercel's Edge Network, Next.js App Router, and serverless computing. Build demos, write docs, speak at conferences.",
+        description: `About Vercel:
+Vercel is the platform for frontend developers, providing the speed and reliability innovators need to create at the moment of inspiration. We are the creators of Next.js and pioneers in edge computing.
+
+About the Role:
+We are looking for a technical Developer Advocate to champion Vercel's Edge Compute runtime and modern frontend architectures. You will build cutting-edge demo applications, create technical guides, speak at international conferences, and interface directly between our developer community and product engineering teams.
+
+What You'll Do:
+• Build reference architectures demonstrating streaming server components, Edge middleware, and AI SDK integrations.
+• Create high-signal technical video tutorials, blog posts, and open-source starter kits.
+• Represent Vercel at developer events and host workshops worldwide.
+• Synthesize community feedback into prioritized product specifications for our internal engineering squads.
+
+What We Look For:
+• 3+ years of production experience building full-stack applications with React, Next.js, and TypeScript.
+• Proven track record of creating technical content (videos, blog posts, open-source repositories).
+• Comfort with public speaking and explaining complex distributed systems concepts clearly.
+• Passion for web performance, Core Web Vitals, and developer ergonomics.
+
+Compensation & Benefits:
+• Base salary: $140,000 – $170,000 USD + equity package.
+• 100% remote flexibility with home office stipend.
+• Comprehensive health benefits and 401(k).
+• Generous conference and travel budgets.`,
         ghostScore: {
           score: 11,
           riskLevel: "low",
@@ -873,14 +946,36 @@ class JobAggregatorService {
         salaryMax: 210000,
         salaryFormatted: "$160k – $210k",
         salaryCurrency: "USD",
-        tags: ["Python", "Next.js", "LLM", "FastAPI", "TypeScript"],
+        tags: ["Python", "Next.js", "LLM", "FastAPI", "TypeScript", "PostgreSQL"],
         experienceLevel: "mid",
         jobType: "full-time",
         source: "Y Combinator",
         applyUrl: "https://scale.com/careers",
         postedAt: new Date(Date.now() - 8 * 86400000).toISOString(),
         postedAtTs: Date.now() - 8 * 86400000,
-        description: "Design LLM evaluation and generative AI agent interfaces. Work at the intersection of AI research and product engineering to build tools that accelerate AI development.",
+        description: `About Scale AI:
+Scale AI provides data infrastructure for the foundation model era. We partner with the world's leading AI labs, enterprises, and governments to power the next generation of generative AI models.
+
+About the Role:
+As a Fullstack AI Product Engineer, you will design and implement the user interfaces and orchestrations powering our Generative AI evaluation and enterprise agent products. You will work on collaborative prompt engineering workflows, automated red-teaming dashboards, and human-in-the-loop review tools.
+
+Responsibilities:
+• Develop real-time frontend interfaces using Next.js, React, and Tailwind CSS.
+• Build reliable backend APIs and async task workers in Python (FastAPI) and PostgreSQL.
+• Integrate frontier LLM APIs (OpenAI, Anthropic, Gemini, open weights) for automated synthetic evaluation.
+• Collaborate closely with ML researchers, product managers, and enterprise customers.
+
+Qualifications:
+• 3+ years of fullstack software engineering experience in modern JavaScript/TypeScript and Python.
+• Experience building interactive web applications with complex state and real-time streaming data.
+• Familiarity with LLM APIs, prompt engineering, or vector retrieval systems.
+• BS or MS in Computer Science or equivalent practical experience.
+
+Compensation & Perks:
+• Salary: $160,000 – $210,000 USD + substantial Scale AI equity.
+• Full health coverage + 401k match.
+• Flexible work location (San Francisco HQ or Remote US/Canada).
+• Daily lunch & dinner catering for in-office teammates or food stipend for remote.`,
         ghostScore: {
           score: 18,
           riskLevel: "low",
@@ -894,7 +989,7 @@ class JobAggregatorService {
         company: "Legacy Enterprise Systems",
         location: "Chicago, IL",
         isRemote: false,
-        tags: ["Java", "Spring Boot", "Oracle"],
+        tags: ["Java", "Spring Boot", "Oracle", "SOAP", "J2EE"],
         experienceLevel: "senior",
         jobType: "full-time",
         source: "LinkedIn",
@@ -902,7 +997,16 @@ class JobAggregatorService {
         applyUrl: "https://example.com/apply",
         postedAt: new Date(Date.now() - 72 * 86400000).toISOString(),
         postedAtTs: Date.now() - 72 * 86400000,
-        description: "Maintain core enterprise billing databases and legacy transaction processing systems.",
+        description: `Overview:
+Legacy Enterprise Systems is seeking a Senior Java Backend Engineer to maintain legacy batch billing procedures, SOAP web services, and Oracle database stored procedures for internal corporate reporting.
+
+Requirements:
+• 8+ years experience with Java 8/11, Spring Boot, and Hibernate.
+• Working knowledge of Oracle PL/SQL stored procedures and DB2 integrations.
+• Experience maintaining monolithic architectures.
+
+TrueHire Anti-Ghosting Analysis:
+⚠️ This position has been active for 72 consecutive days without updates or confirmed interview loops. Public data indicates this may be an evergreen requisition used for candidate pipeline harvesting rather than an active immediate opening.`,
         ghostScore: {
           score: 82,
           riskLevel: "high",

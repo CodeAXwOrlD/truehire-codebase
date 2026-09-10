@@ -43,19 +43,20 @@ export function GhostScoreExplainModal({ job, open, onClose }: GhostScoreExplain
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
         role="dialog"
-        aria-label="Ghost score explainability"
+        aria-modal="true"
+        aria-labelledby="ghost-diag-title"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg rounded-card border border-border-strong bg-surface p-6 shadow-[0_8px_30px_rgba(0,0,0,0.6)]"
+        className="w-full max-w-lg rounded-2xl border border-zinc-700/80 bg-[#121217] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] animate-in zoom-in-95 duration-150"
       >
         <div className="flex items-center justify-between border-b border-border pb-4">
           <div className="flex items-center gap-2.5">
             <Icon size={18} className={riskConfig.color} />
-            <h2 className="text-base font-semibold text-ink">TrueHire Anti-Ghost Diagnosis</h2>
+            <h2 id="ghost-diag-title" className="text-base font-semibold text-ink">TrueHire Anti-Ghost Diagnosis</h2>
           </div>
           <button
             onClick={onClose}

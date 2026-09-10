@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth } from "../middleware/auth";
+import { verifyAccessToken } from "../lib/jwt";
 import { callScoringService } from "../lib/serviceClient";
 
 export const candidateRouter = Router();
@@ -26,9 +26,19 @@ const candidateProfiles = new Map<string, CandidateProfile>([
   ],
 ]);
 
-// GET /api/candidate/profile - Retrieve candidate profile & skills
-candidateRouter.get("/profile", requireAuth, (req, res) => {
-  const userId = req.user!.sub;
+// GET /api/candidate/profile - Retrieve candidate profile & skills (public with optional auth)
+candidateRouter.get("/profile", (req, res) => {
+  let userId = "guest";
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    try {
+      const payload = verifyAccessToken(authHeader.split(" ")[1]);
+      userId = payload.sub;
+    } catch {
+      userId = "guest";
+    }
+  }
+
   const profile = candidateProfiles.get(userId) || {
     userId,
     skills: ["React", "TypeScript", "Node.js", "PostgreSQL"],
@@ -40,9 +50,19 @@ candidateRouter.get("/profile", requireAuth, (req, res) => {
   return res.json({ data: profile, error: null });
 });
 
-// POST /api/candidate/profile - Save candidate profile & extract skills
-candidateRouter.post("/profile", requireAuth, async (req, res) => {
-  const userId = req.user!.sub;
+// POST /api/candidate/profile - Save candidate profile & extract skills (public with optional auth)
+candidateRouter.post("/profile", async (req, res) => {
+  let userId = "guest";
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    try {
+      const payload = verifyAccessToken(authHeader.split(" ")[1]);
+      userId = payload.sub;
+    } catch {
+      userId = "guest";
+    }
+  }
+
   const { resumeText, skills, experienceYears, targetRole } = req.body;
 
   let finalSkills = skills || [];

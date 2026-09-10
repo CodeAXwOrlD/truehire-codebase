@@ -17,13 +17,6 @@ body {
   outline-offset: 2px;
 }
 
-/* Custom cursor replaces the native one, but only on fine-pointer (mouse) devices */
-@media (pointer: fine) {
-  * {
-    cursor: none !important;
-  }
-}
-
 /* ── Shimmer animation for skeleton loaders ─────────────────────────────── */
 @keyframes shimmer {
   0% {
@@ -87,3 +80,108 @@ textarea {
   background: rgba(47, 191, 168, 0.25);
   color: #f2f2f3;
 }
+
+/* ── Rich Job Description HTML Renderer Styling ───────────────────────────── */
+.rich-job-description {
+  color: #d4d4d8;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+}
+
+.rich-job-description p {
+  margin-bottom: 1rem;
+  color: #d4d4d8;
+}
+
+.rich-job-description h1,
+.rich-job-description h2,
+.rich-job-description h3,
+.rich-job-description h4 {
+  color: #ffffff;
+  font-weight: 700;
+  margin-top: 1.5rem;
+  margin-bottom: 0.625rem;
+  letter-spacing: -0.01em;
+}
+
+.rich-job-description h1 {
+  font-size: 1.25rem;
+}
+
+.rich-job-description h2 {
+  font-size: 1.125rem;
+}
+
+.rich-job-description h3 {
+  font-size: 1rem;
+}
+
+.rich-job-description h4 {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #2FBFA8;
+}
+
+.rich-job-description ul,
+.rich-job-description ol {
+  margin-top: 0.5rem;
+  margin-bottom: 1.25rem;
+  padding-left: 1.5rem;
+}
+
+.rich-job-description ul {
+  list-style-type: disc;
+}
+
+.rich-job-description ol {
+  list-style-type: decimal;
+}
+
+.rich-job-description li {
+  margin-bottom: 0.5rem;
+  color: #d4d4d8;
+  line-height: 1.6;
+}
+
+.rich-job-description li::marker {
+  color: #2FBFA8;
+}
+
+.rich-job-description strong,
+.rich-job-description b {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.rich-job-description a {
+  color: #2FBFA8;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s ease;
+}
+
+.rich-job-description a:hover {
+  color: #5eead4;
+}
+
+.rich-job-description blockquote {
+  border-left: 3px solid #2FBFA8;
+  padding-left: 1rem;
+  margin: 1.25rem 0;
+  color: #a1a1aa;
+  font-style: italic;
+  background: rgba(47, 191, 168, 0.05);
+  padding: 0.75rem 1rem;
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.rich-job-description code {
+  font-family: monospace;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+  color: #2FBFA8;
+}
+

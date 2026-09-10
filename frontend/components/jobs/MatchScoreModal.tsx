@@ -17,19 +17,20 @@ export function MatchScoreModal({ job, match, open, onClose }: MatchScoreModalPr
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
         role="dialog"
-        aria-label="Match score breakdown"
+        aria-modal="true"
+        aria-labelledby="match-score-title"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg rounded-card border border-teal/40 bg-surface p-6 shadow-[0_8px_30px_rgba(47,191,168,0.15)]"
+        className="w-full max-w-lg rounded-2xl border border-teal/40 bg-[#121217] p-6 shadow-[0_20px_50px_rgba(47,191,168,0.2)] animate-in zoom-in-95 duration-150"
       >
         <div className="flex items-center justify-between border-b border-border pb-4">
           <div className="flex items-center gap-2">
             <Sparkles size={18} className="text-teal" />
-            <h2 className="text-base font-semibold text-ink">AI Match Breakdown</h2>
+            <h2 id="match-score-title" className="text-base font-semibold text-ink">AI Match Breakdown</h2>
           </div>
           <button
             onClick={onClose}

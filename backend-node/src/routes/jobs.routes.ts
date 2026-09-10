@@ -96,7 +96,6 @@ jobsRouter.get("/stream", (req: Request, res: Response) => {
 
 jobsRouter.post(
   "/parse-resume",
-  requireAuth,
   upload.single("resume"),
   async (req: Request, res: Response) => {
     if (!req.file) {

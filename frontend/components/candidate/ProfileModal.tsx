@@ -54,7 +54,7 @@ export function ProfileModal({ profile, open, onClose, onSaved }: ProfileModalPr
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
@@ -62,7 +62,7 @@ export function ProfileModal({ profile, open, onClose, onSaved }: ProfileModalPr
         aria-modal="true"
         aria-labelledby="profile-modal-title"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg rounded-card border border-border-strong bg-surface p-6 shadow-2xl"
+        className="w-full max-w-lg rounded-2xl border border-zinc-700/80 bg-[#121217] p-6 shadow-2xl animate-in zoom-in-95 duration-150"
       >
         <div className="flex items-center justify-between border-b border-border pb-4">
           <div className="flex items-center gap-2">

@@ -51,6 +51,31 @@ export async function logout() {
   return res;
 }
 
+export interface VerifyInput {
+  email?: string;
+  phone?: string;
+  identifier?: string;
+  code: string;
+}
+
+export async function verifyEmail(input: VerifyInput) {
+  const res = await apiFetch<AuthResponse>("/api/auth/verify", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  if (res.data?.accessToken) {
+    setAccessToken(res.data.accessToken);
+  }
+  return res;
+}
+
+export async function resendOtp(identifier: { email?: string; phone?: string; identifier?: string }) {
+  return apiFetch<{ message: string }>("/api/auth/resend-otp", {
+    method: "POST",
+    body: JSON.stringify(identifier),
+  });
+}
+
 export async function getMe() {
   return apiFetch<{ id: string; email: string; role: "candidate" | "recruiter" }>("/api/auth/me");
 }

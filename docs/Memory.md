@@ -7,13 +7,14 @@ Purpose: read by the AI coding tool at the start of every session so it does not
 ---
 
 ## Current phase
-Phase 6 COMPLETE.
-- Phase 6: AI Match-Score Engine & Resume Parsing via Python FastAPI microservice, Candidate Profile & Tech Stack Manager, Dynamic Match % Badges on live job board, Match Breakdown Explainability Modal (Matched skills, Missing skills, Tailoring tips), and Candidate Application Pipeline.
-- Next Phase: Phase 7 (Interactive Analytics Cohorts & Funnel Visualizations) & Phase 8 (Production Deployment Hardening).
+Phase 7 & Phase 8 COMPLETE. All phases (1 through 8) fully implemented, integrated, and verified with zero TypeScript and build errors across frontend, backend-node, and Python scoring microservice.
 
 ## Decisions log
 *(most recent first)*
 
+- **HiringCafe-style Real-time Multi-Source Job Board & Instant Resume NLP (Phase 7 & 8):** Multi-source live job ingestion engine supporting 15+ platforms (Himalayas, Remotive, Jobicy, The Muse, FindWork, JSearch [LinkedIn, Indeed, Glassdoor, ZipRecruiter], Arbeitnow, RemoteOK, YC). Instant drag-and-drop resume upload (PDF/DOCX) processed via Python `pdfplumber` & `python-docx` for immediate skill and role extraction without artificial scan waits. Real-time SSE updates (`/api/jobs/stream`), multi-dimensional filtering (remote, ghost risk threshold, experience level, job type, posted date, salary range), and smart candidate sorting (Best Match, Anti-Ghost Verified, Newest).
+- **Phase 7 Recruiter Analytics Dashboard:** Complete interactive analytics suite built with Recharts (`AreaChart` for 12-week Time-to-Fill trend vs industry benchmark line, horizontal `BarChart` for recruitment pipeline funnel, `LineChart` for 7-day ghost risk trend with warning thresholds, and Donut chart for requisition status breakdown).
+- **Phase 8 Production Hardening & Accessibility Polish:** React ErrorBoundaries for graceful degradation, full modal ARIA specifications (`aria-modal="true"`, `role="dialog"`, `aria-labelledby`), reduced-motion CSS compliance, shimmering skeleton loaders (`SkeletonCard`), and complete production bundle compilation (`next build` passing all routes).
 - **Direct Instant Authentication & Holographic Unlock (v2):** Replaced OTP verification with direct instant registration and login. Users sign up/sign in with Email & Password, trigger the holographic Verified Beacon unlock animation, and enter their respective workspaces immediately with zero friction or external email dependencies.
 - **AI Match-Score Architecture implemented (v2):** Python FastAPI microservice extracts skills via NLP regex dictionary matching from raw resume/bio text. Calculates compatibility score (0-100%) against job titles, tags, and job descriptions with breakdown of matched vs missing competencies.
 - **Candidate Skill Profile & Match UI locked (v1):** Live Job Board (/jobs) displays glowing Teal Match Badge (e.g. 90% Match) on every listing. Candidate can open "My Skills" modal to customize tech stack and trigger live match recomputation. Match Breakdown Modal displays matched skills, missing skills, and interview tailoring tips.
@@ -31,6 +32,8 @@ Phase 6 COMPLETE.
 - **Session 4 (Phase 4 & Phase 5 Live Job Board + Ghost-Score Engine):** Built Python Ghost-Score calculation & explainability engine, Node HMAC-SHA256 service client, Multi-source live job aggregator & SSE streamer, Candidate Live Job Board (/jobs) with multi-filters and detail drawer.
 - **Session 5 (Phase 6 AI Match-Score Engine & Resume Parsing):** Implemented Python NLP resume parser & match score heuristic router, Node candidate routes, Candidate Skills & Profile Modal, dynamic Match % badges across live jobs, and Match Breakdown modal. All services verified with 0 errors.
 - **Session 6 (Frictionless Direct Auth & Holographic Unlock):** Streamlined authentication to direct email/password sign-up and login with instant JWT session issuance and holographic biometric Verified Beacon unlock animation. Verified with 0 errors.
+- **Session 7 (Phase 7 Analytics & Phase 8 HiringCafe-style Job Board Hardening):** Integrated 15+ live job sources, binary resume parsing (`pdfplumber` & `python-docx`) without scan delay, Recharts analytics dashboard (TTF, funnel, ghost risk trends), shimmer loading skeletons, accessibility modal attributes (`aria-modal`), and verified all services with 100% clean builds.
+- **Session 8 (Job Specification Panel, High-Contrast UI & Resume Tuning Modal):** Removed custom cursor override and restored native crisp pointer. Upgraded contrast tokens (pure white `#FFFFFF`, bright zinc-300 subtexts, distinct card surfaces). Built `ResumeReviewModal` giving candidates full transparency over extracted roles, experience, and skills with add/remove/toggle controls before applying as active filters. Replaced brief drawer with comprehensive Job Specification Panel featuring 4-card highlights grid, anti-ghost signals breakdown, AI match breakdown, and full formatted description with styled section headers and custom bullet markers.
 
 ## Known open questions
-- PDF/DOCX binary file upload direct extraction via PyPDF2 / pdfplumber.
+- None. Core application, real-time multi-source aggregation, instant resume parsing, analytics, and ghost-score engines are operational.

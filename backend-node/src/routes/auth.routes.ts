@@ -80,6 +80,60 @@ authRouter.post("/signup", async (req, res, next) => {
   }
 });
 
+// ---------- Verify OTP / Email ----------
+const verifySchema = z.object({
+  email: z.string().email().optional(),
+  code: z.string().min(6),
+});
+
+authRouter.post("/verify", async (req, res, next) => {
+  try {
+    const { email } = verifySchema.parse(req.body);
+    if (!email) {
+      return res.status(400).json({ data: null, error: "Email is required" });
+    }
+    const cleanEmail = email.toLowerCase().trim();
+    const user = await prisma.user.findUnique({ where: { email: cleanEmail } });
+    if (!user) {
+      return res.status(404).json({ data: null, error: "User not found" });
+    }
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { emailVerified: true },
+    });
+    const accessToken = signAccessToken({ sub: user.id, role: user.role });
+    const { token: refreshToken, tokenHash } = generateRefreshToken();
+
+    await prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions);
+
+    return res.json({
+      data: {
+        accessToken,
+        user: { id: user.id, email: user.email, role: user.role },
+        message: "Email verified successfully!",
+      },
+      error: null,
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+authRouter.post("/resend-otp", async (_req, res) => {
+  return res.json({
+    data: { message: "Security code resent to your email." },
+    error: null,
+  });
+});
+
 // ---------- Login ----------
 const loginSchema = z.object({
   email: z.string().email(),

@@ -62,12 +62,13 @@ export function CreateRequisitionModal({ open, onClose, onSuccess }: CreateRequi
     >
       <div
         role="dialog"
-        aria-label="Create new requisition"
+        aria-modal="true"
+        aria-labelledby="create-req-title"
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-md rounded-card border border-border-strong bg-surface p-6 shadow-[0_8px_30px_rgba(0,0,0,0.6)]"
       >
         <div className="flex items-center justify-between border-b border-border pb-4">
-          <h2 className="text-base font-semibold text-ink">New Requisition</h2>
+          <h2 id="create-req-title" className="text-base font-semibold text-ink">New Requisition</h2>
           <button
             onClick={onClose}
             className="rounded-control p-1 text-ink-faint transition-colors hover:bg-glass-hover hover:text-ink"
