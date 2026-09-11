@@ -1,24 +1,52 @@
 import re
 import io
 import base64
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List
 
 router = APIRouter(prefix="/match-score", tags=["match-score"])
 
-KNOWN_TECH_SKILLS = [
-    "react", "next.js", "nextjs", "vue", "angular", "svelte", "typescript", "javascript",
-    "python", "fastapi", "django", "flask", "node.js", "nodejs", "express", "go", "golang",
-    "rust", "java", "spring", "c++", "c#", ".net", "ruby", "rails", "php", "laravel",
-    "postgresql", "postgres", "mysql", "mongodb", "redis", "elasticsearch", "sqlite",
-    "graphql", "rest", "grpc", "prisma", "typeorm", "docker", "kubernetes", "k8s",
-    "aws", "gcp", "azure", "ci/cd", "terraform", "linux", "git", "tailwind", "css", "html",
-    "llm", "openai", "pytorch", "tensorflow", "nlp", "machine learning", "distributed systems",
-    "kafka", "rabbitmq", "celery", "websocket", "webrtc", "solidity", "web3", "supabase",
-    "firebase", "vercel", "cloudflare", "nginx", "apache", "ansible", "jenkins", "github actions",
-    "swift", "kotlin", "flutter", "react native", "unity", "unreal", "figma",
+TECH_SKILLS_MAP = {
+    # Languages
+    "python": "Python", "typescript": "TypeScript", "javascript": "JavaScript",
+    "js": "JavaScript", "ts": "TypeScript", "java": "Java", "c++": "C++", "c#": "C#",
+    "c": "C", "golang": "Go", "go": "Go", "rust": "Rust", "ruby": "Ruby", "php": "PHP",
+    "swift": "Swift", "kotlin": "Kotlin", "dart": "Dart", "scala": "Scala", "sql": "SQL",
+    # Frontend
+    "react": "React", "react.js": "React", "reactjs": "React", "next.js": "Next.js",
+    "nextjs": "Next.js", "vue": "Vue.js", "vue.js": "Vue.js", "angular": "Angular",
+    "svelte": "Svelte", "html": "HTML5", "html5": "HTML5", "css": "CSS3", "css3": "CSS3",
+    "tailwind": "Tailwind CSS", "tailwindcss": "Tailwind CSS", "bootstrap": "Bootstrap",
+    "sass": "SASS/SCSS", "scss": "SASS/SCSS", "redux": "Redux", "zustand": "Zustand",
+    # Backend & Frameworks
+    "node.js": "Node.js", "nodejs": "Node.js", "node": "Node.js", "express": "Express",
+    "express.js": "Express", "fastapi": "FastAPI", "django": "Django", "flask": "Flask",
+    "spring": "Spring Boot", "spring boot": "Spring Boot", "nest.js": "NestJS", "nestjs": "NestJS",
+    "laravel": "Laravel", "rails": "Ruby on Rails", ".net": ".NET", "dotnet": ".NET",
+    # Databases & Storage
+    "postgresql": "PostgreSQL", "postgres": "PostgreSQL", "mongodb": "MongoDB",
+    "mysql": "MySQL", "redis": "Redis", "sqlite": "SQLite", "prisma": "Prisma",
+    "supabase": "Supabase", "firebase": "Firebase", "elasticsearch": "Elasticsearch",
+    "dynamodb": "DynamoDB", "cassandra": "Cassandra",
+    # Cloud & DevOps
+    "docker": "Docker", "kubernetes": "Kubernetes", "k8s": "Kubernetes",
+    "aws": "AWS", "gcp": "GCP", "azure": "Azure", "terraform": "Terraform",
+    "ci/cd": "CI/CD", "linux": "Linux", "git": "Git", "github": "GitHub",
+    "gitlab": "GitLab", "jenkins": "Jenkins", "github actions": "GitHub Actions",
+    "nginx": "Nginx", "kafka": "Kafka", "rabbitmq": "RabbitMQ", "celery": "Celery",
+    # API & Architecture
+    "graphql": "GraphQL", "rest": "REST APIs", "rest api": "REST APIs", "grpc": "gRPC",
+    "websocket": "WebSocket", "webrtc": "WebRTC", "distributed systems": "Distributed Systems",
+    # AI / Data / Mobile / Design
+    "llm": "LLM", "openai": "OpenAI", "pytorch": "PyTorch", "tensorflow": "TensorFlow",
+    "pandas": "Pandas", "numpy": "NumPy", "nlp": "NLP", "machine learning": "Machine Learning",
+    "figma": "Figma", "postman": "Postman", "flutter": "Flutter", "react native": "React Native",
+}
+
+ROLE_PATTERNS = [
+    r"\b(?:senior|lead|staff|principal|junior|associate|intern|trainee)?\s*(?:full[\s-]?stack|frontend|front[\s-]?end|backend|back[\s-]?end|software|web|mobile|devops|data|ml|ai|cloud|systems?|qa|automation|security)\s*(?:engineer|developer|architect|intern|trainee|analyst|specialist)\b",
 ]
 
 
@@ -27,16 +55,8 @@ class ParseResumeInput(BaseModel):
 
 
 class ParseResumeB64Input(BaseModel):
-    """For base64-encoded file content sent from Node.js backend."""
     content_b64: str
-    filename: str  # .pdf or .docx
-
-
-class ParsedProfileResult(BaseModel):
-    skills: List[str]
-    experience_years: int
-    detected_roles: List[str]
-    summary: str
+    filename: str
 
 
 class MatchScoreInput(BaseModel):
@@ -47,67 +67,44 @@ class MatchScoreInput(BaseModel):
     job_description: str = ""
 
 
-class MatchScoreResult(BaseModel):
-    match_percentage: int
-    matched_skills: List[str]
-    missing_skills: List[str]
-    alignment_summary: str
-    tailoring_tips: List[str]
-
-
 def extract_skills_from_text(text: str) -> List[str]:
+    found = set()
     lower_text = " " + text.lower() + " "
-    found = []
-    for skill in KNOWN_TECH_SKILLS:
-        pattern = r"(?:^|[\s,.\-;/()\[\]])" + re.escape(skill) + r"(?:[\s,.\-;/()\[\]]|$)"
+
+    # 1. Match from standard tech dictionary with boundary checks
+    for key, canonical in TECH_SKILLS_MAP.items():
+        pattern = r"(?:^|[\s,.\-;/()\[\]:])" + re.escape(key) + r"(?:[\s,.\-;/()\[\]:]|$)"
         if re.search(pattern, lower_text):
-            canonical = skill.capitalize()
-            if skill in ["next.js", "nextjs"]:
-                canonical = "Next.js"
-            elif skill in ["node.js", "nodejs"]:
-                canonical = "Node.js"
-            elif skill in ["postgresql", "postgres"]:
-                canonical = "PostgreSQL"
-            elif skill in ["aws", "gcp", "css", "html", "nlp", "llm"]:
-                canonical = skill.upper()
-            elif skill in ["ci/cd"]:
-                canonical = "CI/CD"
-            elif skill in ["k8s", "kubernetes"]:
-                canonical = "Kubernetes"
-            elif skill == "react native":
-                canonical = "React Native"
-            elif skill == "github actions":
-                canonical = "GitHub Actions"
-            elif skill == "machine learning":
-                canonical = "Machine Learning"
-            elif skill == "distributed systems":
-                canonical = "Distributed Systems"
-            found.append(canonical)
-    return sorted(list(set(found)))
+            found.add(canonical)
+
+    # 2. Extract dynamically from explicit Skills / Technical Skills sections
+    skill_section = re.search(
+        r"(?:skills|technical skills|technologies|tools|competencies|proficiencies)\s*[:\-\n]([\s\S]{1,600}?)(?:\n\s*[A-Z][a-zA-Z\s]{2,25}[:\n]|\Z)",
+        text,
+        re.IGNORECASE,
+    )
+    if skill_section:
+        items = re.split(r"[,•|\n;/\\]+", skill_section.group(1))
+        for item in items:
+            clean = item.strip().strip("-:•* ")
+            if 2 <= len(clean) <= 25 and not any(w in clean.lower() for w in ["education", "project", "university", "school", "coursework", "summary"]):
+                found.add(clean)
+
+    return sorted(list(found))
 
 
 def detect_roles(text: str) -> List[str]:
-    lower = text.lower()
-    roles = []
-    if "frontend" in lower or "front-end" in lower or "ui engineer" in lower:
-        roles.append("Frontend Engineer")
-    if "backend" in lower or "back-end" in lower or "server-side" in lower:
-        roles.append("Backend Engineer")
-    if "fullstack" in lower or "full stack" in lower or "full-stack" in lower:
-        roles.append("Fullstack Engineer")
-    if "devops" in lower or "infrastructure" in lower or "platform engineer" in lower:
-        roles.append("DevOps / Infrastructure Engineer")
-    if "ai " in lower or "machine learning" in lower or "ml engineer" in lower:
-        roles.append("AI / ML Engineer")
-    if "mobile" in lower or "ios" in lower or "android" in lower:
-        roles.append("Mobile Engineer")
-    if "data engineer" in lower or "data scientist" in lower:
-        roles.append("Data Engineer")
-    return roles if roles else ["Software Engineer"]
+    found_roles = set()
+    for pat in ROLE_PATTERNS:
+        matches = re.findall(pat, text, re.IGNORECASE)
+        for m in matches:
+            clean = " ".join([w.capitalize() for w in m.strip().split()])
+            found_roles.add(clean)
+
+    return sorted(list(found_roles)) if found_roles else []
 
 
 def extract_text_from_pdf_bytes(content: bytes) -> str:
-    """Extract text from PDF using pdfplumber."""
     try:
         import pdfplumber
         text_parts = []
@@ -117,41 +114,27 @@ def extract_text_from_pdf_bytes(content: bytes) -> str:
                 if page_text:
                     text_parts.append(page_text)
         return "\n".join(text_parts)
-    except ImportError:
-        return ""
     except Exception:
         return ""
 
 
 def extract_text_from_docx_bytes(content: bytes) -> str:
-    """Extract text from DOCX using python-docx."""
     try:
         from docx import Document
         doc = Document(io.BytesIO(content))
         paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
         return "\n".join(paragraphs)
-    except ImportError:
-        return ""
     except Exception:
         return ""
 
 
 def extract_experience_info(text: str) -> tuple[int, int, str]:
-    """
-    Carefully parse work experience from resume text:
-    - Searches for explicit work experience statements (e.g. 'X years of experience', 'X yrs exp')
-    - Searches for months of internship/work (e.g. '3 month internship', '1 month at...', '3 months intern')
-    - Ignores academic degrees ('3rd year student', '4-year B.Tech')
-    - Returns (years: int, total_months: int, label: str)
-    - Defaults to 0 (Entry level) if no explicit years of experience are found! Never defaults to 3!
-    """
-    # 1. Search for explicit work experience patterns with years
     explicit_year_patterns = [
         r"(?:experience|exp|worked|working)\s*(?:for|of|:)?\s*(\d+)\+?\s*(?:years?|yrs?)",
         r"(\d+)\+?\s*(?:years?|yrs?)\s*(?:of)?\s*(?:relevant\s+)?(?:experience|exp|in software|as a|professional)",
         r"(?:total\s+)?experience\s*[:\-]?\s*(\d+)\+?\s*(?:years?|yrs?)",
     ]
-    
+
     found_years = []
     for pat in explicit_year_patterns:
         matches = re.findall(pat, text, re.IGNORECASE)
@@ -160,7 +143,6 @@ def extract_experience_info(text: str) -> tuple[int, int, str]:
             if 0 < val < 45:
                 found_years.append(val)
 
-    # 2. Search for explicit months (e.g. "3 months internship", "1 month job", "3 mos intern")
     found_months = []
     month_matches = re.findall(r"\b(\d+)\s*(?:months?|mos?)\b", text, re.IGNORECASE)
     for m in month_matches:
@@ -168,7 +150,6 @@ def extract_experience_info(text: str) -> tuple[int, int, str]:
         if 0 < val < 48:
             found_months.append(val)
 
-    # 3. Check for intern / fresher / early career indicators
     is_fresher_or_intern = bool(
         re.search(r"\b(intern|internship|fresher|trainee|apprentice|student|graduate trainee)\b", text, re.IGNORECASE)
     )
@@ -179,14 +160,12 @@ def extract_experience_info(text: str) -> tuple[int, int, str]:
         years = max(found_years)
         label = f"{years}+ years"
     elif total_months > 0:
-        # e.g. 3 months internship + 1 month job = 4 months
         years = 1 if total_months >= 12 else 0
         label = f"{total_months} months (Entry / Early Career)"
     elif is_fresher_or_intern:
         years = 0
         label = "Entry Level / Intern (< 1 yr)"
     else:
-        # Default to 0 (Entry Level), never hardcode 3!
         years = 0
         label = "Entry Level (< 1 yr)"
 
@@ -195,10 +174,6 @@ def extract_experience_info(text: str) -> tuple[int, int, str]:
 
 @router.post("/extract-resume")
 def extract_resume_from_file(data: ParseResumeB64Input):
-    """
-    Accepts a base64-encoded PDF or DOCX file, extracts text,
-    then runs NLP skill extraction and accurate experience detection.
-    """
     try:
         content = base64.b64decode(data.content_b64)
     except Exception:
@@ -210,7 +185,6 @@ def extract_resume_from_file(data: ParseResumeB64Input):
     elif filename_lower.endswith(".docx") or filename_lower.endswith(".doc"):
         text = extract_text_from_docx_bytes(content)
     else:
-        # Treat as plain text
         try:
             text = content.decode("utf-8", errors="ignore")
         except Exception:
@@ -248,7 +222,6 @@ def extract_resume_from_file(data: ParseResumeB64Input):
 
 @router.post("/parse-resume")
 def parse_resume(data: ParseResumeInput):
-    """Parse raw resume text with accurate experience detection."""
     skills = extract_skills_from_text(data.resume_text)
     years, total_months, exp_label = extract_experience_info(data.resume_text)
     roles = detect_roles(data.resume_text)
@@ -272,15 +245,26 @@ def parse_resume(data: ParseResumeInput):
     })
 
 
-
 @router.post("/calculate")
 def calculate_match(data: MatchScoreInput):
     candidate_skills_lower = [s.lower() for s in data.candidate_skills]
+
+    if not candidate_skills_lower:
+        return JSONResponse({
+            "data": {
+                "match_percentage": 0,
+                "matched_skills": [],
+                "missing_skills": data.job_tags or [],
+                "alignment_summary": "Upload resume to compute match score.",
+                "tailoring_tips": ["Upload your resume or set your skills to see match alignment."],
+            },
+            "error": None,
+        })
+
     job_text = f"{data.job_title} {' '.join(data.job_tags)} {data.job_description}"
     required_skills = extract_skills_from_text(job_text)
-
     if not required_skills:
-        required_skills = data.job_tags if data.job_tags else ["TypeScript", "React", "Node.js"]
+        required_skills = data.job_tags if data.job_tags else []
 
     matched = []
     missing = []
@@ -293,20 +277,16 @@ def calculate_match(data: MatchScoreInput):
 
     if required_skills:
         match_ratio = len(matched) / len(required_skills)
+        percentage = int(round(match_ratio * 100))
     else:
-        match_ratio = 0.8
-
-    title_words = [w.lower() for w in data.job_title.split() if len(w) > 3]
-    synergy_bonus = 0.1 if any(w in " ".join(candidate_skills_lower) for w in title_words) else 0.0
-
-    percentage = int(min(98, max(25, (match_ratio * 75) + (synergy_bonus * 100) + 15)))
+        percentage = 0
 
     tips = []
     if missing:
         tips.append(f"Highlight any experience you have with {', '.join(missing[:3])} in your portfolio.")
-    if percentage >= 85:
+    if percentage >= 80:
         tips.append("Your tech stack closely mirrors the core requirements for this position.")
-    else:
+    elif percentage > 0:
         tips.append("Review the job description to emphasize transferable system design patterns.")
 
     return JSONResponse({
@@ -314,7 +294,7 @@ def calculate_match(data: MatchScoreInput):
             "match_percentage": percentage,
             "matched_skills": matched,
             "missing_skills": missing,
-            "alignment_summary": f"Matched {len(matched)} of {len(required_skills)} key technical competencies.",
+            "alignment_summary": f"Matched {len(matched)} of {len(required_skills)} key technical competencies." if required_skills else "No specific technical competencies specified.",
             "tailoring_tips": tips,
         },
         "error": None,

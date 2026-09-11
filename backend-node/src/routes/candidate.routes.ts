@@ -13,20 +13,9 @@ interface CandidateProfile {
   targetRole: string;
 }
 
-const candidateProfiles = new Map<string, CandidateProfile>([
-  [
-    "8d3a2d43-68e8-4915-9626-5b84fd16b2dc", // aggarwalakhil2005@gmail.com
-    {
-      userId: "8d3a2d43-68e8-4915-9626-5b84fd16b2dc",
-      skills: ["React", "Next.js", "TypeScript", "Node.js", "PostgreSQL", "Python", "Tailwind", "Docker"],
-      experienceYears: 4,
-      resumeText: "Experienced Fullstack Software Engineer proficient in React, Next.js, Node.js, Python, PostgreSQL, and Docker.",
-      targetRole: "Fullstack / Frontend Engineer",
-    },
-  ],
-]);
+const candidateProfiles = new Map<string, CandidateProfile>();
 
-// GET /api/candidate/profile - Retrieve candidate profile & skills (public with optional auth)
+// GET /api/candidate/profile - Retrieve candidate profile & skills
 candidateRouter.get("/profile", (req, res) => {
   let userId = "guest";
   const authHeader = req.headers.authorization;
@@ -41,10 +30,10 @@ candidateRouter.get("/profile", (req, res) => {
 
   const profile = candidateProfiles.get(userId) || {
     userId,
-    skills: ["React", "TypeScript", "Node.js", "PostgreSQL"],
+    skills: [],
     experienceYears: 0,
     resumeText: "",
-    targetRole: "Software Engineer",
+    targetRole: "",
   };
 
   return res.json({ data: profile, error: null });
@@ -86,7 +75,7 @@ candidateRouter.post("/profile", async (req, res) => {
     skills: finalSkills,
     experienceYears: finalExp,
     resumeText: resumeText || "",
-    targetRole: targetRole || "Software Engineer",
+    targetRole: targetRole || "",
   };
 
   candidateProfiles.set(userId, profile);
@@ -97,6 +86,9 @@ candidateRouter.post("/profile", async (req, res) => {
 candidateRouter.post("/match-job", async (req, res) => {
   const { candidateSkills, candidateExperienceYears, jobTitle, jobTags, jobDescription } = req.body;
 
+  const userSkills: string[] = Array.isArray(candidateSkills) ? candidateSkills : [];
+  const userExp = typeof candidateExperienceYears === "number" ? candidateExperienceYears : 0;
+
   const matchRes = await callScoringService<{
     match_percentage: number;
     matched_skills: string[];
@@ -104,22 +96,48 @@ candidateRouter.post("/match-job", async (req, res) => {
     alignment_summary: string;
     tailoring_tips: string[];
   }>("/match-score/calculate", "POST", {
-    candidate_skills: candidateSkills || ["React", "TypeScript", "Node.js"],
-    candidate_experience_years: candidateExperienceYears || 3,
+    candidate_skills: userSkills,
+    candidate_experience_years: userExp,
     job_title: jobTitle,
     job_tags: jobTags || [],
     job_description: jobDescription || "",
   });
 
   if (matchRes.error || !matchRes.data) {
-    // Fallback heuristic if scoring service is unreachable
+    // Real calculation fallback if scoring service is unreachable
+    if (userSkills.length === 0) {
+      return res.json({
+        data: {
+          matchPercentage: 0,
+          matchedSkills: [],
+          missingSkills: jobTags || [],
+          alignmentSummary: "Upload your resume to calculate a personalized match score.",
+          tailoringTips: ["Upload your resume or set your skills to see match alignment."],
+        },
+        error: null,
+      });
+    }
+
+    const tags: string[] = (jobTags || []).map((t: string) => t.toLowerCase());
+    const matched = userSkills.filter(s =>
+      tags.some(t => t.includes(s.toLowerCase()) || s.toLowerCase().includes(t))
+    );
+    const missing = (jobTags || []).filter((t:any) =>
+      !userSkills.some(s => s.toLowerCase() === t.toLowerCase())
+    ).slice(0, 5);
+    const pct = tags.length > 0 ? Math.round((matched.length / tags.length) * 100) : 0;
+
     return res.json({
       data: {
-        matchPercentage: 88,
-        matchedSkills: candidateSkills ? candidateSkills.slice(0, 3) : ["React", "TypeScript"],
-        missingSkills: [],
-        alignmentSummary: "Strong technical competency alignment.",
-        tailoringTips: ["Highlight key accomplishments on your resume."],
+        matchPercentage: pct,
+        matchedSkills: matched,
+        missingSkills: missing,
+        alignmentSummary: matched.length > 0
+          ? `Matched ${matched.length} of ${tags.length} required tags.`
+          : "No direct skill overlap detected.",
+        tailoringTips: missing.length > 0
+          ? [`Consider highlighting experience with ${missing.slice(0, 3).join(", ")}.`]
+          : [],
       },
       error: null,
     });

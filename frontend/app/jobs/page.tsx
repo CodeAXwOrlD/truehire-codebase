@@ -118,10 +118,10 @@ export default function CandidateJobsPage() {
   // Profile / Resume
   const [profile, setProfile] = useState<CandidateProfile>({
     userId: "local",
-    skills: ["React", "Next.js", "TypeScript", "Node.js", "PostgreSQL"],
+    skills: [],
     experienceYears: 0,
     resumeText: "",
-    targetRole: "Software Engineer",
+    targetRole: "",
   });
   const [profileOpen, setProfileOpen] = useState(false);
   const [resumeZoneOpen, setResumeZoneOpen] = useState(false);
@@ -191,10 +191,13 @@ export default function CandidateJobsPage() {
   // ── Compute Match Scores ─────────────────────────────────────────────────────
 
   function scheduleMatchCompute(jobList: UnifiedJob[], skills: string[]) {
-    if (matchComputeRef.current || !skills.length || !jobList.length) return;
+    if (!skills.length) {
+      setMatchScores({});
+      return;
+    }
+    if (matchComputeRef.current || !jobList.length) return;
     matchComputeRef.current = true;
 
-    // Fast client-side keyword matching
     const skillsLower = skills.map((s) => s.toLowerCase());
     const newScores: Record<string, number> = {};
 
@@ -209,8 +212,12 @@ export default function CandidateJobsPage() {
         jobWords.some((w) => w.includes(sk) || sk.includes(w))
       ).length;
 
-      const ratio = matchedCount / Math.max(1, Math.min(skills.length, 6));
-      newScores[job.id] = Math.min(98, Math.max(25, Math.round(ratio * 70 + 28)));
+      if (matchedCount === 0) {
+        newScores[job.id] = 0;
+      } else {
+        const targetCount = Math.max(1, Math.min(skills.length, 6));
+        newScores[job.id] = Math.min(99, Math.round((matchedCount / targetCount) * 100));
+      }
     }
 
     setMatchScores(newScores);
@@ -676,12 +683,22 @@ export default function CandidateJobsPage() {
               {sortMode}
             </span>
 
-            {profile.skills.length > 0 && (
+            {profile.skills.length > 0 ? (
               <span className="text-teal font-mono flex items-center gap-1">
                 <Sparkles size={12} />
                 Match active · {profile.skills.slice(0, 4).join(", ")}
                 {profile.skills.length > 4 && ` +${profile.skills.length - 4}`}
               </span>
+            ) : (
+              <button
+                onClick={() => {
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="text-zinc-400 hover:text-teal font-mono text-xs flex items-center gap-1.5 transition-colors group"
+              >
+                <Sparkles size={12} className="text-zinc-500 group-hover:text-teal transition-colors" />
+                <span>Upload resume above for real-time match</span>
+              </button>
             )}
           </div>
 

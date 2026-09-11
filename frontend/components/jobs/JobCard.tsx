@@ -93,7 +93,7 @@ export function JobCard({ job, matchScore, onExplainGhostScore, onExplainMatchSc
 
           <div className="flex items-center gap-2 shrink-0">
             {/* Match Score Badge */}
-            {matchScore !== undefined && onExplainMatchScore && (
+            {matchScore !== undefined && matchScore > 0 && onExplainMatchScore && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
